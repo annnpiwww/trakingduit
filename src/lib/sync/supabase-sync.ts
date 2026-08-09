@@ -31,10 +31,58 @@ export interface SupabaseSyncOptions {
   silent?: boolean;
 }
 
-/** Drop device-only fields and stamp ownership before pushing. */
-function toRemote<T extends Syncable>(row: T, userId: string): Record<string, unknown> {
+/**
+ * Kolom yang pasti ada di remote untuk tiap tabel. Cuma field di daftar ini
+ * yang boleh di-push — kolom baru (mis. installment) yang belum sempat di-migrasi
+ * ke remote bakal dibuang, jadi PostgREST tidak error "could not find column
+ * ... in schema cache" / 400. Honey: allowlist harus di-update manual kalau
+ * remote_schema.sql tambah kolom; trigger: error schema cache untuk tabel baru.
+ */
+const REMOTE_COLUMNS: Record<string, readonly string[]> = {
+  wallets: [
+    "id", "user_id", "name", "type", "initial_balance", "currency", "color",
+    "icon", "note", "archived", "order", "created_at", "updated_at", "deleted",
+  ],
+  categories: [
+    "id", "user_id", "name", "type", "icon", "color", "is_default", "keywords",
+    "created_at", "updated_at", "deleted",
+  ],
+  transactions: [
+    "id", "user_id", "type", "amount", "wallet_id", "to_wallet_id", "category_id",
+    "date", "note", "merchant", "tags", "receipt_id", "source",
+    "created_at", "updated_at", "deleted",
+  ],
+  budgets: [
+    "id", "user_id", "category_id", "amount", "period", "start_date", "rollover",
+    "created_at", "updated_at", "deleted",
+  ],
+  saving_goals: [
+    "id", "user_id", "name", "target_amount", "saved_amount", "deadline",
+    "wallet_id", "color", "icon", "archived", "created_at", "updated_at", "deleted",
+  ],
+  bills: [
+    "id", "user_id", "name", "amount", "due_date", "repeat", "category_id",
+    "wallet_id", "reminder_days", "last_paid_at", "auto_create_tx", "archived",
+    "is_installment", "installment_total", "installment_paid",
+    "installment_amount_per_period", "created_at", "updated_at", "deleted",
+  ],
+  salaries: [
+    "id", "user_id", "month", "amount", "created_at", "updated_at", "deleted",
+  ],
+};
+
+/** Drop device-only fields, saring kolom yang tidak dikenal remote, lalu stamp ownership. */
+function toRemote<T extends Syncable>(
+  row: T,
+  userId: string,
+  remoteTable: string,
+): Record<string, unknown> {
   const { remote_rev: _remoteRev, ...rest } = row as T & { remote_rev?: string };
-  return { ...rest, user_id: userId };
+  const allowed = REMOTE_COLUMNS[remoteTable];
+  const cleaned = allowed
+    ? Object.fromEntries(Object.entries(rest).filter(([key]) => allowed.includes(key)))
+    : rest;
+  return { ...cleaned, user_id: userId };
 }
 
 function toLocal(row: Record<string, unknown>): Record<string, unknown> {
@@ -127,7 +175,7 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
       if (dirty.length) {
         const { error } = await sb
           .from(remote)
-          .upsert(dirty.map((r) => toRemote(r, userId)), { onConflict: "id" });
+          .upsert(dirty.map((r) => toRemote(r, userId, remote)), { onConflict: "id" });
         if (error) throw new Error(`${remote}: ${error.message}`);
         pushed += dirty.length;
         
