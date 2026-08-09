@@ -150,8 +150,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // (jika data cloud memang kosong, seed akan memasukkan default)
       await seedIfEmpty();
 
+      // Sync profile bisa update nama/warna dari cloud — baca ulang biar
+      // UI langsung pakai versi yang paling baru.
+      const refreshed = await db().profile.get(PROFILE_ID);
+      const finalRow = refreshed ?? row;
+
       sessionStorage.setItem(UNLOCK_KEY, createUnlockToken());
-      setProfile(row);
+      setProfile(finalRow);
       setStatus("ready");
     },
     [],
@@ -200,9 +205,41 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async (patch: Partial<UserProfile>) => {
       const current = await db().profile.get(PROFILE_ID);
       if (!current) return;
-      const next = { ...current, ...patch };
+      const next = { ...current, ...patch, updated_at: nowISO() };
       await db().profile.put(next);
       setProfile(next);
+      // Push nama/warna ke cloud biar device lain ikut (last-write-wins pakai updated_at).
+      if (next.supabase_user_id) {
+        const sb = supabaseBrowser();
+        if (sb) {
+          try {
+            // Guard: kalau cloud ternyata lebih baru dari versi lokal yg LAMA,
+            // jangan push — biar nggak nimpa nama yang diedit di device lain
+            // (lost-update race: edit warna di device yg namanya stale).
+            const prevMs = current.updated_at ? Date.parse(current.updated_at) : 0;
+            const { data: cloudProfile } = await sb
+              .from("profiles")
+              .select("updated_at")
+              .eq("id", next.supabase_user_id)
+              .maybeSingle();
+            const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
+            if (cloudMs <= prevMs) {
+              await sb.from("profiles").upsert(
+                {
+                  id: next.supabase_user_id,
+                  name: next.name,
+                  avatar_color: next.avatar_color,
+                  email: next.email,
+                  updated_at: next.updated_at,
+                },
+                { onConflict: "id" },
+              );
+            }
+          } catch (e) {
+            console.error("Gagal push profil ke cloud:", e);
+          }
+        }
+      }
     },
     [],
   );

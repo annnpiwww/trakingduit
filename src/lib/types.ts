@@ -180,4 +180,6 @@ export interface UserProfile {
   pin_hash?: string;
   supabase_user_id?: string;
   created_at: ISOTime;
+  /** Last write marker untuk sync profile dua arah. */
+  updated_at?: ISOTime;
 }
