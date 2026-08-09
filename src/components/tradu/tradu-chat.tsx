@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles } from "lucide-react";
+import { SendHorizontal, Sparkles } from "lucide-react";
 import { Sheet, Button } from "@/components/ui";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
@@ -268,7 +268,7 @@ export function TraduChat({
             disabled={typing}
           />
           <Button type="submit" size="icon" disabled={!input.trim() || typing} className="shrink-0">
-            <Send className="size-4" />
+            <SendHorizontal className="size-4" />
           </Button>
         </form>
       </div>

@@ -15,7 +15,7 @@ import {
 } from "@/lib/analytics";
 import { downloadFile, formatIDR, monthRange, pct, toMonthKey, cn } from "@/lib/utils";
 import { toCSV } from "@/lib/export";
-import { Button, Card, CardHeader, EmptyState, SegmentedControl } from "@/components/ui";
+import { Button, Card, CardHeader, EmptyState, SegmentedControl, Skeleton } from "@/components/ui";
 import { StatTile } from "@/components/ui/stat-tile";
 import dynamic from "next/dynamic";
 import { MonthSwitcher, monthLabel } from "@/components/layout/month-switcher";
@@ -42,28 +42,31 @@ export default function AnalyticsPage() {
   const [scope, setScope] = React.useState<"expense" | "income">("expense");
   const [chartTab, setChartTab] = React.useState<"daily" | "trends" | "details">("daily");
 
-  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), [], []);
-  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).toArray(), [], []);
-  const allTx = useLiveQuery(() => db().transactions.filter((t) => !t.deleted).toArray(), [], []);
+  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), []);
+  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).toArray(), []);
+  const allTx = useLiveQuery(() => db().transactions.filter((t) => !t.deleted).toArray(), []);
+
+  const isLoading = allTx === undefined || categories === undefined || wallets === undefined;
 
   const months = React.useMemo(() => recentMonths(month, 6), [month]);
-  const monthTx = React.useMemo(() => allTx.filter((t) => t.date.startsWith(month)), [allTx, month]);
+  const monthTx = React.useMemo(() => (allTx ?? []).filter((t) => t.date.startsWith(month)), [allTx, month]);
   const halfYearTx = React.useMemo(
-    () => allTx.filter((t) => months.some((m) => t.date.startsWith(m))),
+    () => (allTx ?? []).filter((t) => months.some((m) => t.date.startsWith(m))),
     [allTx, months],
   );
 
   const t = totals(monthTx);
   const prevMonth = months[months.length - 2];
-  const prevTotals = totals(allTx.filter((tx) => tx.date.startsWith(prevMonth ?? "")));
+  const prevTotals = totals((allTx ?? []).filter((tx) => tx.date.startsWith(prevMonth ?? "")));
   const expenseDelta = prevTotals.expense
     ? Math.round(((t.expense - prevTotals.expense) / prevTotals.expense) * 100)
     : 0;
 
   const slices = React.useMemo(
-    () => byCategory(monthTx, categories, scope),
+    () => byCategory(monthTx, categories ?? [], scope),
     [monthTx, categories, scope],
   );
+
   const daily = React.useMemo(() => dailySeries(monthTx, month), [monthTx, month]);
   const monthly = React.useMemo(() => monthlySeries(halfYearTx, months), [halfYearTx, months]);
   const weekday = React.useMemo(() => byWeekday(monthTx), [monthTx]);
@@ -71,11 +74,11 @@ export default function AnalyticsPage() {
 
   const totalBalance = React.useMemo(() => {
     let balance = 0;
-    for (const w of wallets) {
+    for (const w of wallets ?? []) {
       if (w.archived) continue;
       balance += w.initial_balance;
     }
-    for (const tx of allTx) {
+    for (const tx of allTx ?? []) {
       if (tx.type === "income") balance += tx.amount;
       else if (tx.type === "expense") balance -= tx.amount;
     }
@@ -151,10 +154,28 @@ export default function AnalyticsPage() {
     return { score: finalScore, status, tone, description };
   }, [t.income, t.expense, t.net, totalBalance]);
 
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
   function exportCsv() {
     const { from, to } = monthRange(month);
-    const rows = allTx.filter((tx) => tx.date >= from && tx.date <= to);
-    downloadFile(`trackingduit-analitik-${month}.csv`, toCSV(rows, wallets, categories), "text/csv");
+    const rows = (allTx ?? []).filter((tx) => tx.date >= from && tx.date <= to);
+    downloadFile(`trackingduit-analitik-${month}.csv`, toCSV(rows, wallets ?? [], categories ?? []), "text/csv");
   }
 
   return (
@@ -162,7 +183,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold tracking-tight">Analisis</h1>
+            <h1 className="text-xl font-bold tracking-tight">Analisis</h1>
             <p className="text-xs text-muted">Grafik pemasukan dan pengeluaran</p>
           </div>
           <Button 

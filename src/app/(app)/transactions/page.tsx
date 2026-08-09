@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { totals } from "@/lib/analytics";
 import type { Transaction, TxType } from "@/lib/types";
 import { downloadFile, formatIDR, monthRange, toMonthKey } from "@/lib/utils";
-import { Button, Card, EmptyState, Input, Select, SegmentedControl } from "@/components/ui";
+import { Button, Card, EmptyState, Input, Select, SegmentedControl, Skeleton } from "@/components/ui";
 import { MonthSwitcher } from "@/components/layout/month-switcher";
 import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
@@ -23,8 +23,8 @@ export default function TransactionsPage() {
   const [editing, setEditing] = React.useState<Transaction | null>(null);
   const [adding, setAdding] = React.useState(false);
 
-  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).sortBy("order"), [], []);
-  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), [], []);
+  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).sortBy("order"), []);
+  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), []);
   const monthTx = useLiveQuery(
     () => {
       const { from, to } = monthRange(month);
@@ -35,12 +35,13 @@ export default function TransactionsPage() {
         .toArray();
     },
     [month],
-    [],
   );
+
+  const isLoading = monthTx === undefined || wallets === undefined || categories === undefined;
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return monthTx.filter((t) => {
+    return (monthTx ?? []).filter((t) => {
       if (type !== "all" && t.type !== type) return false;
       if (walletId && t.wallet_id !== walletId && t.to_wallet_id !== walletId) return false;
       if (categoryId && t.category_id !== categoryId) return false;
@@ -103,15 +104,36 @@ export default function TransactionsPage() {
   }
 
   function exportCsv() {
-    const csv = toCSV(filtered, wallets, categories);
+    const csv = toCSV(filtered, wallets ?? [], categories ?? []);
     downloadFile(`trackingduit-${month}.csv`, csv, "text/csv;charset=utf-8");
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </div>
+          <Skeleton className="h-9 w-32 rounded-full" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight">Transaksi</h1>
+          <h1 className="text-xl font-bold tracking-tight">Transaksi</h1>
           <p className="text-xs text-muted">Semua catatan bulan ini</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -225,8 +247,8 @@ export default function TransactionsPage() {
           <>
             <TransactionList
               transactions={paginatedTransactions}
-              categories={categories}
-              wallets={wallets}
+              categories={categories ?? []}
+              wallets={wallets ?? []}
               onSelect={setEditing}
             />
 

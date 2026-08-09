@@ -178,33 +178,6 @@ export const hoverLift = {
   transition: smoothSpring,
 };
 
-// Number counter animation helpers
-export function animateNumber(
-  from: number,
-  to: number,
-  duration: number = 1,
-  onUpdate: (value: number) => void
-) {
-  const startTime = Date.now();
-  const diff = to - from;
-
-  const update = () => {
-    const elapsed = Date.now() - startTime;
-    const progress = Math.min(elapsed / (duration * 1000), 1);
-    
-    // Easing function: easeOutExpo
-    const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-    
-    onUpdate(from + diff * eased);
-
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    }
-  };
-
-  requestAnimationFrame(update);
-}
-
 // ============================================
 // PRESET COMBINATIONS
 // ============================================

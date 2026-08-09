@@ -18,6 +18,7 @@ import {
   Select,
   SegmentedControl,
   Sheet,
+  Skeleton,
   useToast,
 } from "@/components/ui";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -53,20 +54,20 @@ export default function BillsPage() {
 
   const month = toDateKey().slice(0, 7);
   const salary = useLiveQuery(() => getSalaryForMonth(month), [month]);
-  const bills = useLiveQuery(() => db().bills.filter((b) => !b.deleted).sortBy("due_date"), [], []);
+  const bills = useLiveQuery(() => db().bills.filter((b) => !b.deleted).sortBy("due_date"), []);
   const wallets = useLiveQuery(
     () => db().wallets.filter((w) => !w.deleted && !w.archived).sortBy("order"),
-    [],
     [],
   );
   const categories = useLiveQuery(
     () => db().categories.filter((c) => !c.deleted && c.type === "expense").toArray(),
     [],
-    [],
   );
 
+  const isLoading = bills === undefined || wallets === undefined || categories === undefined;
+
   const today = toDateKey();
-  const active = bills.filter((b) => !b.archived);
+  const active = (bills ?? []).filter((b) => !b.archived);
   const overdue = active.filter((b) => b.due_date < today);
   const dueSoon = active.filter((b) => {
     const d = daysBetween(today, b.due_date);
@@ -77,6 +78,30 @@ export default function BillsPage() {
     .reduce((a, b) => a + b.amount, 0);
 
   const totalActiveBills = active.reduce((a, b) => a + b.amount, 0);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-9 w-32 rounded-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   const remainingSalary = (salary?.amount ?? 0) - totalActiveBills;
   const salaryPercent = salary?.amount ? (totalActiveBills / salary.amount) * 100 : 0;
 

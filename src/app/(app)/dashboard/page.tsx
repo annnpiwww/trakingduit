@@ -9,10 +9,10 @@ import {
   CalendarClock,
   ChartPie,
   ListOrdered,
-  ScanLine,
+  ScanText,
   Target,
   TrendingDown,
-  Wallet as WalletIcon,
+  WalletCards,
   AlertCircle,
   Sparkles,
   MessageSquare,
@@ -29,6 +29,7 @@ import {
   CardHeader,
   EmptyState,
   MenuTile,
+  Skeleton,
 } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { MonthSwitcher } from "@/components/layout/month-switcher";
@@ -44,13 +45,13 @@ const QUICK: {
   label: string;
   tone: MenuTone;
 }[] = [
-  { href: "/scan", icon: ScanLine, label: "Scan Struk", tone: "brand" },
+  { href: "/scan", icon: ScanText, label: "Scan Struk", tone: "brand" },
   { href: "/transactions", icon: ListOrdered, label: "Transaksi", tone: "income" },
   { href: "/budgets", icon: TrendingDown, label: "Budget", tone: "expense" },
   { href: "/goals", icon: Target, label: "Target", tone: "warn" },
   { href: "/bills", icon: CalendarClock, label: "Tagihan", tone: "accent" },
   { href: "/analytics", icon: ChartPie, label: "Analisis", tone: "brand" },
-  { href: "/wallets", icon: WalletIcon, label: "Dompet", tone: "income" },
+  { href: "/wallets", icon: WalletCards, label: "Dompet", tone: "income" },
   { href: "/tradu", icon: MessageSquare, label: "Tanya Tradu", tone: "brand" },
 ];
 
@@ -75,9 +76,8 @@ export default function DashboardPage() {
   const wallets = useLiveQuery(
     () => db().wallets.filter((w) => !w.deleted && !w.archived).sortBy("order"),
     [],
-    [],
   );
-  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), [], []);
+  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), []);
   const balances = useLiveQuery(
     async () => {
       await db().transactions.count();
@@ -85,7 +85,6 @@ export default function DashboardPage() {
       return allWalletBalances();
     },
     [],
-    {} as Record<string, number>,
   );
   const monthTx = useLiveQuery(() => {
     const { from, to } = monthRange(month);
@@ -94,7 +93,7 @@ export default function DashboardPage() {
       .between(from, to, true, true)
       .filter((t) => !t.deleted)
       .toArray();
-  }, [month], []);
+  }, [month]);
 
   // Get bills for current month (upcoming & overdue)
   const bills = useLiveQuery(() => {
@@ -102,15 +101,17 @@ export default function DashboardPage() {
     return db()
       .bills.filter((b) => !b.deleted && !b.archived && b.due_date >= today)
       .sortBy("due_date");
-  }, [], []);
+  }, []);
 
-  const t = totals(monthTx);
-  const totalBalance = Object.values(balances).reduce((a, b) => a + b, 0);
+  const isLoading = wallets === undefined || monthTx === undefined || balances === undefined;
+
+  const t = totals(monthTx ?? []);
+  const totalBalance = Object.values(balances ?? {}).reduce((a, b) => a + b, 0);
   
   // Only show 3 most recent transactions
   const recent = React.useMemo(
     () =>
-      [...monthTx]
+      [...(monthTx ?? [])]
         .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
         .slice(0, 3),
     [monthTx],
@@ -125,6 +126,31 @@ export default function DashboardPage() {
   // Use display_name if available, otherwise use name, remove email domain if present
   const rawName = profile?.display_name?.trim() || profile?.name?.trim() || "Kawan";
   const displayName = rawName.includes("@") ? rawName.split("@")[0] : rawName;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
+        <Skeleton className="h-36 w-full rounded-3xl" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-20 w-full rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-44 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -158,7 +184,7 @@ export default function DashboardPage() {
             </span>
             <span className="size-1 rounded-full bg-white/40" aria-hidden />
             <span className="flex items-center gap-1">
-              <WalletIcon className="size-3.5" /> {wallets.length} dompet
+              <WalletCards className="size-3.5" /> {wallets?.length ?? 0} dompet
             </span>
           </div>
         }
@@ -238,8 +264,8 @@ export default function DashboardPage() {
             <>
               <TransactionList
                 transactions={recent}
-                categories={categories}
-                wallets={wallets}
+                categories={categories ?? []}
+                wallets={wallets ?? []}
                 onSelect={setEditing}
               />
               <p className="px-4 pb-3 pt-2 text-center text-xs text-muted">

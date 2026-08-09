@@ -10,7 +10,7 @@ export interface OcrResult {
 }
 
 /** Downscale + re-encode so OCR is fast and the stored data URL stays small. */
-export async function prepareImage(file: File, maxSide = 2200, quality = 0.92): Promise<string> {
+export async function prepareImage(file: File, maxSide = 1200, quality = 0.75): Promise<string> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
@@ -74,12 +74,17 @@ function structuredToParsed(s: {
 
 /** Server-side Gemini Flash — best for thermal receipts, structured extraction. */
 async function tryGemini(dataUrl: string): Promise<OcrResult | null> {
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch("/api/ocr/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: dataUrl }),
     });
+    if (res.status === 429) {
+      // Middleware rate limit window — back off and retry once before falling back.
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2500));
+      continue;
+    }
     if (!res.ok) return null;
     const json = (await res.json()) as { text?: string; structured?: Record<string, unknown> };
     if (!json.text?.trim()) return null;
@@ -88,9 +93,8 @@ async function tryGemini(dataUrl: string): Promise<OcrResult | null> {
       return { text: json.text, parsed: structuredToParsed(structured), engine: "ai-ocr" };
     }
     return { text: json.text, engine: "ai-ocr" };
-  } catch {
-    return null;
   }
+  return null;
 }
 
 /** Server-side Google Vision — only answers when the API key is configured. */

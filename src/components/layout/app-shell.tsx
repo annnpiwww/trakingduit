@@ -5,24 +5,23 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion, type Variants } from "framer-motion";
 import { getAnimation } from "@/lib/animations";
 import {
-  Bell,
+  BellDot,
   CalendarClock,
   ChartPie,
   CreditCard,
   LayoutGrid,
   ListOrdered,
   LockKeyhole,
-  Moon,
   Plus,
-  ScanLine,
+  ScanText,
   Settings,
   Sparkles,
-  Sun,
+  SunMoon,
   Target,
-  Wallet,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/session";
@@ -42,12 +41,12 @@ const LockScreen = dynamic(() => import("@/components/layout/lock-screen").then(
 const PRIMARY_NAV = [
   { href: "/dashboard", label: "Beranda", icon: LayoutGrid },
   { href: "/transactions", label: "Transaksi", icon: ListOrdered },
-  { href: "/wallets", label: "Dompet", icon: Wallet },
+  { href: "/wallets", label: "Dompet", icon: WalletCards },
   { href: "/analytics", label: "Analisis", icon: ChartPie },
 ];
 
 const SECONDARY_NAV = [
-  { href: "/scan", label: "Scan Nota", icon: ScanLine },
+  { href: "/scan", label: "Scan Nota", icon: ScanText },
   { href: "/budgets", label: "Budget", icon: CreditCard },
   { href: "/goals", label: "Target", icon: Target },
   { href: "/bills", label: "Tagihan", icon: CalendarClock },
@@ -57,7 +56,7 @@ const SECONDARY_NAV = [
 const ALL_NAV = [
   ...PRIMARY_NAV,
   ...SECONDARY_NAV,
-  { href: "/notifications", label: "Notifikasi", icon: Bell },
+  { href: "/notifications", label: "Notifikasi", icon: BellDot },
   { href: "/menu", label: "Menu", icon: LayoutGrid },
 ];
 
@@ -218,10 +217,42 @@ function NavLink({
   );
 }
 
+const titleContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.03,
+      delayChildren: 0.02,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -4,
+    transition: { duration: 0.1, ease: "easeIn" },
+  },
+};
+
+const titleLetterVariants: Variants = {
+  hidden: { opacity: 0, y: 5, scale: 0.92 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 700,
+      damping: 35,
+    },
+  },
+};
+
 function TopBar({ unread }: { unread: number }) {
   const pathname = usePathname();
   const { theme, toggle } = useTheme();
+  const shouldReduceMotion = useReducedMotion();
   const title = ALL_NAV.find((n) => pathname.startsWith(n.href))?.label ?? "TrackingDuit";
+  const characters = React.useMemo(() => title.split(""), [title]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg/85 backdrop-blur-md">
@@ -231,31 +262,52 @@ function TopBar({ unread }: { unread: number }) {
         </Link>
         <h1 className="flex-1 truncate text-base font-semibold lg:text-lg">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={title}
-              className="inline-block"
-              initial={getAnimation({ opacity: 0 })}
-              animate={getAnimation({ opacity: 1 })}
-              exit={getAnimation({ opacity: 0 })}
-              transition={{ duration: 0.1 }}
-            >
-              {title}
-            </motion.span>
+            {shouldReduceMotion ? (
+              <motion.span
+                key={title}
+                className="inline-block"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+              >
+                {title}
+              </motion.span>
+            ) : (
+              <motion.span
+                key={title}
+                className="inline-flex"
+                variants={titleContainerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                {characters.map((char, index) => (
+                  <motion.span
+                    key={`${char}-${index}`}
+                    variants={titleLetterVariants}
+                    className="inline-block"
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </motion.span>
+            )}
           </AnimatePresence>
         </h1>
         <button
           onClick={toggle}
           aria-label="Ganti tema"
-          className="rounded-xl p-2 text-muted transition hover:bg-surface-2 hover:text-fg"
+          className="rounded-xl p-2 text-muted transition hover:bg-surface-2 hover:text-fg hover:scale-105 active:scale-95"
         >
-          {theme === "dark" ? <Sun className="size-4.5" /> : <Moon className="size-4.5" />}
+          <SunMoon className="size-4.5" />
         </button>
         <Link
           href="/notifications"
           aria-label="Notifikasi"
-          className="relative rounded-xl p-2 text-muted transition hover:bg-surface-2 hover:text-fg"
+          className="relative rounded-xl p-2 text-muted transition hover:bg-surface-2 hover:text-fg hover:scale-105 active:scale-95"
         >
-          <Bell className="size-4.5" />
+          <BellDot className="size-4.5" />
           {unread > 0 ? (
             <span className="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-expense px-1 text-[10px] font-semibold text-white">
               {unread > 9 ? "9+" : unread}

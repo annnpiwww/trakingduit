@@ -201,18 +201,20 @@ export default function ScanPage() {
                   <p className="truncate text-sm font-medium">
                     {r.parsed.merchant ?? "Nota tanpa nama"}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="truncate text-xs text-muted">
                     {r.parsed.date ?? r.created_at.slice(0, 10)} ·{" "}
                     {r.engine === "gemini" ? "Gemini AI" : r.engine === "ai-ocr" ? "Tradu" : r.engine === "google-vision" ? "Vision" : "Tesseract"}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="num text-sm font-medium">
-                    {r.parsed.total ? formatIDR(r.parsed.total) : "-"}
-                  </span>
-                  <Badge tone={r.status === "confirmed" ? "income" : "warn"}>
-                    {r.status === "confirmed" ? "Tersimpan" : "Pending"}
-                  </Badge>
+                <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="num text-sm font-medium">
+                      {r.parsed.total ? formatIDR(r.parsed.total) : "-"}
+                    </span>
+                    <Badge tone={r.status === "confirmed" ? "income" : "warn"}>
+                      {r.status === "confirmed" ? "Tersimpan" : "Pending"}
+                    </Badge>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"

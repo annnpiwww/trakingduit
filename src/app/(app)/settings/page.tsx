@@ -10,11 +10,10 @@ import {
   FileUp,
   LockKeyhole,
   LogOut,
-  Moon,
   Plus,
-  RefreshCw,
+  RefreshCcwDot,
   Save,
-  Sun,
+  SunMoon,
   Tags,
   Trash2,
   TriangleAlert,
@@ -250,7 +249,7 @@ export default function SettingsPage() {
             ]}
           />
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-            {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+            <SunMoon className="size-3.5" />
             Preferensi disimpan di perangkat ini.
           </p>
         </div>
@@ -285,7 +284,7 @@ export default function SettingsPage() {
               loading={syncing === "sheet"}
               disabled={!sheetStatus?.connected}
             >
-              <RefreshCw className="size-4" /> Sinkron
+              <RefreshCcwDot className="size-4" /> Sinkron
             </Button>
           </div>
 
@@ -318,7 +317,7 @@ export default function SettingsPage() {
               loading={syncing === "supabase"}
               disabled={!supabaseEnabled}
             >
-              <RefreshCw className="size-4" /> Sinkron
+              <RefreshCcwDot className="size-4" /> Sinkron
             </Button>
           </div>
         </div>

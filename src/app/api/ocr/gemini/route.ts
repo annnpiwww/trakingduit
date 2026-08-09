@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ocrRequestSchema, createErrorResponse } from "@/lib/validation";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 interface AiOcrResponse {
   merchant?: string;
@@ -95,27 +96,34 @@ export async function POST(request: Request) {
   if (!image) return NextResponse.json(createErrorResponse("Field 'image' wajib diisi"), { status: 400 });
 
   try {
-    const res = await fetch(`${apiUrl.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        max_tokens: 2000,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: PROMPT },
-              { type: "image_url", image_url: { url: image } },
-            ],
-          },
-        ],
-      }),
-    });
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(`${apiUrl.replace(/\/$/, "")}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          stream: false,
+          max_tokens: 1200,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: PROMPT },
+                { type: "image_url", image_url: { url: image } },
+              ],
+            },
+          ],
+        }),
+      });
+      // OmniRoute admission/rate-limit backpressure: retry briefly before falling back.
+      if (res.status !== 429 && res.status !== 503) break;
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+    res = res!;
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");

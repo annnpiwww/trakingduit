@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 import { markAllNotificationsRead, markNotificationRead } from "@/lib/repo";
 import type { AppNotification } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
-import { Badge, Button, Card, EmptyState } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Skeleton } from "@/components/ui";
 
 const KIND_ICON = {
   bill: CalendarClock,
@@ -28,9 +28,32 @@ export default function NotificationsPage() {
   const items = useLiveQuery(
     () => db().notifications.filter((n) => !n.deleted).reverse().sortBy("created_at"),
     [],
-    [],
   );
-  const unread = items.filter((n) => !n.read).length;
+
+  const isLoading = items === undefined;
+  const unread = (items ?? []).filter((n) => !n.read).length;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
+        <Card className="p-4 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="size-9 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

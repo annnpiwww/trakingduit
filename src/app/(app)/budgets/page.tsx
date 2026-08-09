@@ -16,6 +16,7 @@ import {
   Progress,
   Select,
   Sheet,
+  Skeleton,
   useToast,
 } from "@/components/ui";
 import { DynIcon } from "@/components/ui/icon";
@@ -32,12 +33,10 @@ export default function BudgetsPage() {
   const categories = useLiveQuery(
     () => db().categories.filter((c) => !c.deleted && c.type === "expense").toArray(),
     [],
-    [],
   );
   const budgets = useLiveQuery(
     () => db().budgets.filter((b) => !b.deleted && b.start_date.startsWith(month)).toArray(),
     [month],
-    [],
   );
   const monthTx = useLiveQuery(
     () => {
@@ -49,30 +48,52 @@ export default function BudgetsPage() {
         .toArray();
     },
     [month],
-    [],
   );
+
+  const isLoading = budgets === undefined || monthTx === undefined || categories === undefined;
 
   const spentBy = React.useMemo(() => {
     const map: Record<string, number> = {};
-    for (const t of monthTx) {
+    for (const t of monthTx ?? []) {
       if (!t.category_id) continue;
       map[t.category_id] = (map[t.category_id] ?? 0) + t.amount;
     }
     return map;
   }, [monthTx]);
 
-  const totalBudget = budgets.reduce((a, b) => a + b.amount, 0);
-  const totalSpent = budgets.reduce((a, b) => a + (spentBy[b.category_id] ?? 0), 0);
+  const totalBudget = (budgets ?? []).reduce((a, b) => a + b.amount, 0);
+  const totalSpent = (budgets ?? []).reduce((a, b) => a + (spentBy[b.category_id] ?? 0), 0);
   const daysLeft = React.useMemo(() => {
     const { to } = monthRange(month);
     const today = toDateKey();
     const daysInMonth = Number(to.slice(-2));
-    if (today > to) return 0; // month already finished
-    if (today < `${month}-01`) return daysInMonth; // future month
+    if (today > to) return 0;
+    if (today < `${month}-01`) return daysInMonth;
     return daysInMonth - Number(today.slice(-2)) + 1;
   }, [month]);
 
-  const unbudgeted = categories.filter((c) => !budgets.some((b) => b.category_id === c.id));
+  const unbudgeted = (categories ?? []).filter((c) => !(budgets ?? []).some((b) => b.category_id === c.id));
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

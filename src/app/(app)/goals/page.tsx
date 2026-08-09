@@ -17,6 +17,7 @@ import {
   Input,
   Progress,
   Sheet,
+  Skeleton,
   useToast,
 } from "@/components/ui";
 import { DynIcon, ICON_NAMES } from "@/components/ui/icon";
@@ -29,10 +30,31 @@ export default function GoalsPage() {
   const [contributing, setContributing] = React.useState<SavingGoal | null>(null);
   const [deleteConfirm, setDeleteConfirm] = React.useState<SavingGoal | null>(null);
 
-  const goals = useLiveQuery(() => db().goals.filter((g) => !g.deleted).toArray(), [], []);
-  const active = goals.filter((g) => !g.archived);
+  const goals = useLiveQuery(() => db().goals.filter((g) => !g.deleted).toArray(), []);
+  const isLoading = goals === undefined;
+  const active = (goals ?? []).filter((g) => !g.archived);
   const totalTarget = active.reduce((a, g) => a + g.target_amount, 0);
   const totalSaved = active.reduce((a, g) => a + g.saved_amount, 0);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <Skeleton className="h-9 w-32 rounded-full" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

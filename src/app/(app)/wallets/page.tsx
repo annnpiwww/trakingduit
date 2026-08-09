@@ -17,6 +17,7 @@ import {
   Input,
   Select,
   Sheet,
+  Skeleton,
   useToast,
 } from "@/components/ui";
 import { DynIcon, ICON_NAMES } from "@/components/ui/icon";
@@ -28,7 +29,7 @@ export default function WalletsPage() {
   const [open, setOpen] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState<Wallet | null>(null);
 
-  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).sortBy("order"), [], []);
+  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).sortBy("order"), []);
   const balances = useLiveQuery(
     async () => {
       await db().transactions.count();
@@ -36,7 +37,6 @@ export default function WalletsPage() {
       return allWalletBalances();
     },
     [],
-    {} as Record<string, number>,
   );
   const txCounts = useLiveQuery(
     async () => {
@@ -49,23 +49,43 @@ export default function WalletsPage() {
       return map;
     },
     [],
-    {} as Record<string, number>,
   );
 
-  const active = wallets.filter((w) => !w.archived);
-  const archived = wallets.filter((w) => w.archived);
-  const total = active.reduce((a, w) => a + (balances[w.id] ?? 0), 0);
+  const isLoading = wallets === undefined || balances === undefined;
+  const active = (wallets ?? []).filter((w) => !w.archived);
+  const archived = (wallets ?? []).filter((w) => w.archived);
+  const total = active.reduce((a, w) => a + ((balances ?? {})[w.id] ?? 0), 0);
 
   async function toggleArchive(w: Wallet) {
     await updateWallet(w.id, { archived: w.archived ? 0 : 1 });
     toast(w.archived ? "Dompet diaktifkan" : "Dompet diarsipkan", "success");
   }
 
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </div>
+          <Skeleton className="h-9 w-32 rounded-full" />
+        </div>
+        <Skeleton className="h-36 w-full rounded-3xl" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight">Dompet</h1>
+          <h1 className="text-xl font-bold tracking-tight">Dompet</h1>
           <p className="text-xs text-muted">Kelola saldo tiap akun</p>
         </div>
         <Button
@@ -91,7 +111,7 @@ export default function WalletsPage() {
               key={w.id}
               wallet={w}
               balance={balances[w.id] ?? 0}
-              txCount={txCounts[w.id] ?? 0}
+              txCount={(txCounts ?? {})[w.id] ?? 0}
               onEdit={() => {
                 setEditing(w);
                 setOpen(true);
@@ -131,7 +151,7 @@ export default function WalletsPage() {
                 key={w.id}
                 wallet={w}
                 balance={balances[w.id] ?? 0}
-                txCount={txCounts[w.id] ?? 0}
+                txCount={(txCounts ?? {})[w.id] ?? 0}
                 onEdit={() => {
                   setEditing(w);
                   setOpen(true);
@@ -147,7 +167,7 @@ export default function WalletsPage() {
       <WalletSheet
         open={open}
         wallet={editing}
-        walletCount={wallets.length}
+        walletCount={wallets?.length ?? 0}
         onClose={() => {
           setOpen(false);
           setEditing(null);
@@ -165,7 +185,7 @@ export default function WalletsPage() {
             Yakin ingin menghapus dompet <strong>{deleteConfirm?.name}</strong>?
           </p>
           <p className="text-xs text-muted">
-            {(txCounts[deleteConfirm?.id ?? ""] ?? 0) > 0
+            {((txCounts ?? {})[deleteConfirm?.id ?? ""] ?? 0) > 0
               ? "Dompet ini punya transaksi, jadi akan diarsipkan (bukan dihapus permanen)."
               : "Dompet ini akan dihapus permanen."}
           </p>

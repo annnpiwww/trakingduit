@@ -4,14 +4,14 @@ import * as React from "react";
 import { motion, AnimatePresence, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { X, Eye, EyeOff } from "lucide-react";
-import { sheetOverlay, sheetContent, getAnimation } from "@/lib/animations";
+import { sheetOverlay, sheetContent, toastPreset, getAnimation } from "@/lib/animations";
 
 /* ----------------------------------- Card ---------------------------------- */
 
 export function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("rounded-2xl bg-surface shadow-(--shadow-card)", className)}
+      className={cn("rounded-xl bg-surface shadow-(--shadow-card) transition-shadow duration-200", className)}
       {...props}
     />
   );
@@ -77,7 +77,7 @@ export function Button({
   return (
     <motion.button
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center rounded-full font-medium transition",
+        "inline-flex cursor-pointer items-center justify-center rounded-xl font-medium transition",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         "disabled:pointer-events-none disabled:opacity-50",
         VARIANTS[variant],
@@ -163,7 +163,7 @@ export function Field({
 }
 
 const CONTROL =
-  "w-full rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm text-fg placeholder:text-muted outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
+  "w-full rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-sm text-fg placeholder:text-muted outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
 
 export function Input({ className, ...props }: React.ComponentProps<"input">) {
   return <input className={cn(CONTROL, className)} {...props} />;
@@ -371,7 +371,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        "inline-flex rounded-xl border border-border bg-surface-2 p-1 text-xs font-medium",
+        "inline-flex rounded-lg border border-border bg-surface-2 p-1 text-xs font-medium",
         className,
       )}
       role="tablist"
@@ -383,14 +383,14 @@ export function SegmentedControl<T extends string>({
           aria-selected={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative flex-1 cursor-pointer rounded-lg px-3 py-1.5 transition",
+            "relative flex-1 cursor-pointer rounded-md px-3 py-1.5 transition",
             value === o.value ? "text-fg" : "text-muted hover:text-fg",
           )}
         >
           {value === o.value ? (
             <motion.span
               layoutId={`segmented-${o.value}`}
-              className="absolute inset-0 rounded-lg bg-surface shadow-sm"
+              className="absolute inset-0 rounded-md bg-surface shadow-sm"
               transition={{ type: "spring", stiffness: 500, damping: 35 }}
             />
           ) : null}
@@ -403,19 +403,87 @@ export function SegmentedControl<T extends string>({
 
 /* ---------------------------------- Toast ---------------------------------- */
 
-type Toast = { id: number; message: string; tone: "info" | "success" | "error" };
+type Toast = { id: string; message: string; tone: "info" | "success" | "error" };
 const ToastContext = React.createContext<(message: string, tone?: Toast["tone"]) => void>(() => {});
 
 export function useToast() {
   return React.useContext(ToastContext);
 }
 
+function ToastItem({
+  toast,
+  onDismiss,
+}: {
+  toast: Toast;
+  onDismiss: (id: string) => void;
+}) {
+  const [isHovered, setIsHovered] = React.useState(false);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const remainingRef = React.useRef<number>(3200);
+  const startTimeRef = React.useRef<number>(Date.now());
+
+  React.useEffect(() => {
+    if (isHovered) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      remainingRef.current -= Date.now() - startTimeRef.current;
+    } else {
+      startTimeRef.current = Date.now();
+      timerRef.current = setTimeout(() => {
+        onDismiss(toast.id);
+      }, Math.max(remainingRef.current, 500));
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isHovered, toast.id, onDismiss]);
+
+  return (
+    <motion.div
+      layout
+      variants={getAnimation(toastPreset)}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        "pointer-events-auto flex items-center justify-between gap-3 max-w-sm w-full rounded-xl border px-4 py-2.5 text-sm shadow-lg transition-all",
+        toast.tone === "success"
+          ? "border-income/30 bg-income/10 text-income"
+          : toast.tone === "error"
+            ? "border-expense/30 bg-expense/10 text-expense"
+            : "border-brand/30 bg-brand/10 text-brand",
+      )}
+    >
+      <span className="flex-1 font-medium">{toast.message}</span>
+      <button
+        type="button"
+        onClick={() => onDismiss(toast.id)}
+        className="rounded-md p-1 opacity-70 transition hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
+        aria-label="Tutup"
+      >
+        <X className="size-3.5" />
+      </button>
+    </motion.div>
+  );
+}
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
+
+  const dismiss = React.useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const push = React.useCallback((message: string, tone: Toast["tone"] = "info") => {
-    const id = Date.now() + Math.random();
-    setToasts((t) => [...t, { id, message, tone }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts((prev) => {
+      const next = [...prev, { id, message, tone }];
+      if (next.length > 3) {
+        return next.slice(next.length - 3);
+      }
+      return next;
+    });
   }, []);
 
   return (
@@ -424,24 +492,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-6">
         <AnimatePresence mode="popLayout">
           {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              layout
-              initial={{ opacity: 0, y: 24, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -12, scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              className={cn(
-                "pointer-events-auto max-w-sm rounded-xl border px-4 py-2.5 text-sm shadow-lg",
-                t.tone === "success"
-                  ? "border-income/30 bg-income/10 text-income"
-                  : t.tone === "error"
-                    ? "border-expense/30 bg-expense/10 text-expense"
-                    : "border-border bg-surface text-fg",
-              )}
-            >
-              {t.message}
-            </motion.div>
+            <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
           ))}
         </AnimatePresence>
       </div>
@@ -509,7 +560,7 @@ export function BalanceCard({
             </motion.button>
           ) : null}
         </div>
-        <p className="num mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{value}</p>
+        <p className="num mt-1 text-4xl font-bold tracking-tight sm:text-5xl">{value}</p>
         {sub ? <div className="mt-2 text-xs text-white/80">{sub}</div> : null}
       </div>
     </motion.div>
@@ -595,19 +646,19 @@ export function MenuTile({
     income: "bg-income/10 text-income",
     expense: "bg-expense/10 text-expense",
     warn: "bg-warn/10 text-warn",
-    accent: "bg-accent/10 text-accent",
+    accent: "bg-accent/8 text-accent",
   } as const;
   return (
     <motion.div
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-2 rounded-2xl bg-surface p-3 shadow-(--shadow-card) transition",
+        "flex cursor-pointer flex-col items-center gap-2 rounded-xl bg-surface p-3 shadow-(--shadow-card) hover:shadow-(--shadow-hover) transition-all duration-200",
         className,
       )}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.1 }}
     >
-      <span className={cn("grid size-11 place-items-center rounded-2xl", tones[tone])}>
+      <span className={cn("grid size-11 place-items-center rounded-xl", tones[tone])}>
         <Icon className="size-5" />
       </span>
       <span className="text-[11px] font-medium text-fg">{label}</span>
