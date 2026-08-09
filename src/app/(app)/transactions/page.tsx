@@ -41,16 +41,19 @@ export default function TransactionsPage() {
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (monthTx ?? []).filter((t) => {
-      if (type !== "all" && t.type !== type) return false;
-      if (walletId && t.wallet_id !== walletId && t.to_wallet_id !== walletId) return false;
-      if (categoryId && t.category_id !== categoryId) return false;
-      if (q) {
-        const hay = `${t.merchant ?? ""} ${t.note ?? ""} ${t.amount}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+    return (monthTx ?? [])
+      .filter((t) => {
+        if (type !== "all" && t.type !== type) return false;
+        if (walletId && t.wallet_id !== walletId && t.to_wallet_id !== walletId) return false;
+        if (categoryId && t.category_id !== categoryId) return false;
+        if (q) {
+          const hay = `${t.merchant ?? ""} ${t.note ?? ""} ${t.amount}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
+      // transaksi terbaru di atas — di-sort SEBELUM di-paginate biar halaman 1 = data terbaru
+      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at));
   }, [monthTx, type, walletId, categoryId, query]);
 
   const t = totals(filtered);
@@ -147,39 +150,26 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <MonthSwitcher value={month} onChange={setMonth} className="flex-1 sm:w-36" />
-          <Button
-            variant={showFilters || activeFilters ? "secondary" : "ghost"}
-            size="icon"
-            onClick={() => setShowFilters((v) => !v)}
-            aria-label="Filter"
-            className="sm:hidden size-9 shrink-0"
-          >
-            <SlidersHorizontal className="size-4" />
-          </Button>
+      <div className="flex items-center gap-2">
+        <MonthSwitcher value={month} onChange={setMonth} className="shrink-0 sm:w-36" />
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cari merchant, catatan, nominal…"
+            className="pl-9 w-full text-xs sm:text-sm placeholder:text-[10px] sm:placeholder:text-xs h-9 sm:h-10"
+          />
         </div>
-        <div className="flex items-center gap-2 w-full flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari merchant, catatan, nominal…"
-              className="pl-9 w-full text-xs sm:text-sm placeholder:text-[10px] sm:placeholder:text-xs h-9 sm:h-10"
-            />
-          </div>
-          <Button
-            variant={showFilters || activeFilters ? "secondary" : "ghost"}
-            size="icon"
-            onClick={() => setShowFilters((v) => !v)}
-            aria-label="Filter"
-            className="hidden sm:inline-flex size-9 shrink-0"
-          >
-            <SlidersHorizontal className="size-4" />
-          </Button>
-        </div>
+        <Button
+          variant={showFilters || activeFilters ? "secondary" : "ghost"}
+          size="icon"
+          onClick={() => setShowFilters((v) => !v)}
+          aria-label="Filter"
+          className="size-9 shrink-0"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
       </div>
 
       {showFilters ? (
@@ -225,18 +215,18 @@ export default function TransactionsPage() {
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="p-3">
-          <p className="text-[11px] text-muted">Masuk</p>
-          <p className="num text-sm font-semibold text-income">{formatIDR(t.income)}</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <Card className="p-2.5 sm:p-3">
+          <p className="text-[10px] sm:text-[11px] text-muted">Masuk</p>
+          <p className="num text-xs sm:text-sm font-semibold truncate text-income">{formatIDR(t.income)}</p>
         </Card>
-        <Card className="p-3">
-          <p className="text-[11px] text-muted">Keluar</p>
-          <p className="num text-sm font-semibold text-expense">{formatIDR(t.expense)}</p>
+        <Card className="p-2.5 sm:p-3">
+          <p className="text-[10px] sm:text-[11px] text-muted">Keluar</p>
+          <p className="num text-xs sm:text-sm font-semibold truncate text-expense">{formatIDR(t.expense)}</p>
         </Card>
-        <Card className="p-3">
-          <p className="text-[11px] text-muted">Sisa</p>
-          <p className={`num text-sm font-semibold ${t.net >= 0 ? "text-income" : "text-expense"}`}>
+        <Card className="p-2.5 sm:p-3">
+          <p className="text-[10px] sm:text-[11px] text-muted">Sisa</p>
+          <p className={`num text-xs sm:text-sm font-semibold truncate ${t.net >= 0 ? "text-income" : "text-expense"}`}>
             {formatIDR(t.net)}
           </p>
         </Card>
@@ -250,6 +240,7 @@ export default function TransactionsPage() {
               categories={categories ?? []}
               wallets={wallets ?? []}
               onSelect={setEditing}
+              showDayNet={false}
             />
 
             {totalPages > 1 && (

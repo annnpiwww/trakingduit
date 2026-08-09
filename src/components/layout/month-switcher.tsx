@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { addMonths, cn, toMonthKey } from "@/lib/utils";
 
 const LABEL = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" });
@@ -23,7 +23,7 @@ export function MonthSwitcher({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-surface px-1 py-0.5",
+        "inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-1.5 py-1",
         className,
       )}
     >
@@ -34,7 +34,17 @@ export function MonthSwitcher({
       >
         <ChevronLeft className="size-3.5" />
       </button>
-      <span className="min-w-28 px-1 text-center text-xs font-medium">{monthLabel(value)}</span>
+      <span className="flex min-w-28 items-center justify-center gap-1.5 px-1 text-center text-xs font-medium">
+        <Calendar className="size-3.5 shrink-0 text-muted" />
+        <span className="truncate">{monthLabel(value)}</span>
+        {isCurrent ? (
+          <span
+            className="size-1.5 shrink-0 rounded-full bg-brand"
+            title="Bulan ini"
+            aria-label="Bulan ini"
+          />
+        ) : null}
+      </span>
       <button
         onClick={() => onChange(addMonths(value, 1))}
         disabled={isCurrent}

@@ -9,6 +9,7 @@ import {
   CreditCard,
   HandCoins,
   LogOut,
+  MonitorSmartphone,
   ScanLine,
   Settings,
   Target,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button, Card, Field, Input, Sheet } from "@/components/ui";
+import { InstallSheet } from "@/components/install/install-sheet";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -32,6 +34,7 @@ const ITEMS = [
 export default function MenuPage() {
   const { profile, signOut } = useSession();
   const [profileOpen, setProfileOpen] = React.useState(false);
+  const [installOpen, setInstallOpen] = React.useState(false);
 
   return (
     <div className="space-y-4">
@@ -79,6 +82,21 @@ export default function MenuPage() {
               </Link>
             </li>
           ))}
+          <li>
+            <button
+              onClick={() => setInstallOpen(true)}
+              className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-2"
+            >
+              <span className="grid size-9 place-items-center rounded-full bg-accent/10 text-accent">
+                <MonitorSmartphone className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">Install Aplikasi</span>
+                <span className="block text-xs text-muted">Pasang TrackingDuit di home screen</span>
+              </span>
+              <ChevronRight className="size-4 text-muted" />
+            </button>
+          </li>
         </ul>
       </Card>
 
@@ -87,10 +105,11 @@ export default function MenuPage() {
       </Button>
 
       <p className="text-center text-xs text-muted">
-        TrackingDuit v1.11.0
+        TrackingDuit v1.12.0
       </p>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   );
 }

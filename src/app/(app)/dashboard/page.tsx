@@ -202,6 +202,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Balance hero */}
+      <div data-tour="balance">
       <BalanceCard
         label="Total saldo"
         value={mask(totalBalance)}
@@ -225,9 +226,11 @@ export default function DashboardPage() {
           </div>
         }
       />
+      </div>
 
       {/* Tradu AI Chat Entry */}
       <button
+        data-tour="tradu"
         onClick={() => setTraduOpen(true)}
         className="group flex w-full items-center gap-3 rounded-2xl bg-surface p-4 shadow-(--shadow-card) transition hover:bg-surface-2 cursor-pointer"
       >
@@ -246,7 +249,12 @@ export default function DashboardPage() {
       {/* Quick menu */}
       <section className="grid grid-cols-4 gap-2.5">
         {QUICK.map((a) => (
-          <Link key={a.href} href={a.href} className="block">
+          <Link
+            key={a.href}
+            href={a.href}
+            className="block"
+            data-tour={a.href === "/debts" ? "tile-debts" : undefined}
+          >
             <MenuTile icon={a.icon} label={a.label} tone={a.tone} className="h-full" />
           </Link>
         ))}

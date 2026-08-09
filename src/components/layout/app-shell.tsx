@@ -139,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <Button className="mt-3 w-full" onClick={() => setAddOpen(true)}>
+        <Button className="mt-3 w-full" data-tour="add" onClick={() => setAddOpen(true)}>
           <Plus className="size-4" /> Catat Transaksi
         </Button>
 
@@ -336,6 +336,7 @@ function BottomNav({ pathname, onAdd }: { pathname: string; onAdd: () => void })
           <motion.button
             onClick={onAdd}
             aria-label="Catat transaksi"
+            data-tour="add"
             className="-mt-6 grid size-14 place-items-center rounded-full bg-[linear-gradient(135deg,#e8600c,#ff7a00)] text-white shadow-lg shadow-orange-500/30 transition active:scale-95"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.92 }}

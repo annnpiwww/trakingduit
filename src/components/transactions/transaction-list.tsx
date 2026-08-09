@@ -14,6 +14,7 @@ export function TransactionList({
   wallets,
   onSelect,
   groupByDay = true,
+  showDayNet = true,
   className,
 }: {
   transactions: Transaction[];
@@ -21,6 +22,8 @@ export function TransactionList({
   wallets: Wallet[];
   onSelect?: (tx: Transaction) => void;
   groupByDay?: boolean;
+  /** Tampilkan net (+/-) di header per-hari. Dimatikan di halaman Transaksi biar bersih. */
+  showDayNet?: boolean;
   className?: string;
 }) {
   const catMap = React.useMemo(
@@ -82,10 +85,12 @@ export function TransactionList({
           >
             <div className="flex items-center justify-between px-4 py-2 text-[11px] text-muted">
               <span className="font-medium">{formatDayLabel(day)}</span>
-              <span className={cn("num", net > 0 ? "text-income" : net < 0 ? "text-expense" : "")}>
-                {net > 0 ? "+" : ""}
-                {formatIDR(net)}
-              </span>
+              {showDayNet ? (
+                <span className={cn("num", net > 0 ? "text-income" : net < 0 ? "text-expense" : "")}>
+                  {net > 0 ? "+" : ""}
+                  {formatIDR(net)}
+                </span>
+              ) : null}
             </div>
             <motion.ul className="divide-y divide-border border-y border-border">
               {items.map((tx) => (
