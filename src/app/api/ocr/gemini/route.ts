@@ -57,22 +57,24 @@ PENTING:
 
 Respond HANYA dengan JSON, tanpa markdown code fence atau text lain.`;
 
+const GEMINI_MODEL = "gemini-2.0-flash";
+
 /**
  * POST /api/ocr/gemini — vision OCR via an OpenAI-compatible endpoint
- * (configured with OCR_API_URL / OCR_API_KEY / OCR_MODEL, e.g. a combo
- * proxy exposing an "ocr" model). Returns 501 when unset so the client
- * falls back to other engines.
+ * (configured with OCR_API_URL / OCR_API_KEY / OCR_MODEL). Kalau proxy tidak
+ * diset atau gagal (502/503/fetch error), fallback langsung ke Google Gemini
+ * API (GEMINI_API_KEY). Return 501 hanya kalau dua-duanya tidak ada.
  */
 export async function POST(request: Request) {
   // No auth required: this route only OCRs the uploaded image and touches no
   // user data, so local-only users (no cloud account) must reach it too.
 
-  const apiUrl = process.env.OCR_API_URL;
-  const apiKey = process.env.OCR_API_KEY;
-  const model = process.env.OCR_MODEL || "ocr";
-  if (!apiUrl || !apiKey) {
+  const ocrApiUrl = process.env.OCR_API_URL;
+  const ocrApiKey = process.env.OCR_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if ((!ocrApiUrl || !ocrApiKey) && !geminiKey) {
     return NextResponse.json(
-      { error: "OCR_API_URL/OCR_API_KEY belum diset", fallback: "vision" },
+      { error: "OCR_API_URL/OCR_API_KEY atau GEMINI_API_KEY belum diset", fallback: "vision" },
       { status: 501 },
     );
   }
@@ -96,60 +98,29 @@ export async function POST(request: Request) {
   if (!image) return NextResponse.json(createErrorResponse("Field 'image' wajib diisi"), { status: 400 });
 
   try {
-    let res: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(`${apiUrl.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          stream: false,
-          max_tokens: 1200,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: PROMPT },
-                { type: "image_url", image_url: { url: image } },
-              ],
-            },
-          ],
-        }),
-      });
-      // OmniRoute admission/rate-limit backpressure: retry briefly before falling back.
-      if (res.status !== 429 && res.status !== 503) break;
-      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
-    }
-    res = res!;
+    let parsed: AiOcrResponse | null = null;
+    let engine = "ai-ocr";
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return NextResponse.json(
-        createErrorResponse(`OCR API error ${res.status}: ${body.slice(0, 200)}`),
-        { status: 502 },
-      );
+    // 1) Coba OpenAI-compatible proxy dulu
+    if (ocrApiUrl && ocrApiKey) {
+      try {
+        parsed = parseOcrText(
+          await ocrViaOpenAI(ocrApiUrl, ocrApiKey, process.env.OCR_MODEL || "ocr", image),
+        );
+      } catch (err) {
+        console.error("OCR proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
+      }
     }
 
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = data.choices?.[0]?.message?.content ?? "";
+    // 2) Fallback ke Google Gemini API langsung
+    if (!parsed && geminiKey) {
+      parsed = parseOcrText(await ocrViaGemini(image));
+      engine = "gemini";
+    }
 
-    // Parse JSON response — strip code fences, then extract the JSON object
-    // even if the model wraps it with prose or reasoning.
-    let parsed: AiOcrResponse;
-    try {
-      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-      parsed = JSON.parse(slice);
-    } catch {
+    if (!parsed) {
       return NextResponse.json(
-        createErrorResponse("OCR response bukan JSON valid"),
+        createErrorResponse("OCR tidak bisa baca teks dari gambar"),
         { status: 502 },
       );
     }
@@ -171,7 +142,7 @@ export async function POST(request: Request) {
         tax: parsed.tax,
         items: parsed.items || [],
       },
-      engine: "ai-ocr",
+      engine,
     });
   } catch (err) {
     console.error("OCR route error:", err);
@@ -180,4 +151,96 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+}
+
+/** Panggil OpenAI-compatible proxy (retry 429/503), balikin teks mentah; throw kalau gagal. */
+async function ocrViaOpenAI(apiUrl: string, apiKey: string, model: string, image: string): Promise<string> {
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(`${apiUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: PROMPT },
+              { type: "image_url", image_url: { url: image } },
+            ],
+          },
+        ],
+      }),
+    });
+    // OmniRoute admission/rate-limit backpressure: retry briefly before falling back.
+    if (res.status !== 429 && res.status !== 503) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+  }
+  res = res!;
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`OCR API error ${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const text = data.choices?.[0]?.message?.content ?? "";
+  if (!text.trim()) throw new Error("OCR API kosong (tidak ada content)");
+  return text;
+}
+
+/** Panggil Google Gemini API langsung (vision), balikin teks mentah; throw kalau gagal. */
+async function ocrViaGemini(image: string): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  const { mimeType, data } = splitDataUrl(image);
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: PROMPT }] },
+        contents: [{ role: "user", parts: [{ inlineData: { mimeType, data } }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  const dataRes = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
+  const text = dataRes.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  if (!text.trim()) throw new Error("Gemini kosong (tidak ada kandidat)");
+  return text;
+}
+
+/** Pecah data URL ("data:image/jpeg;base64,...") jadi mimeType + base64. */
+function splitDataUrl(image: string): { mimeType: string; data: string } {
+  const comma = image.indexOf(",");
+  const header = comma >= 0 ? image.slice(0, comma) : "";
+  const mimeType = header.replace(/^data:/, "").split(";")[0] || "image/jpeg";
+  const data = comma >= 0 ? image.slice(comma + 1) : image;
+  return { mimeType, data };
+}
+
+/** Parse model text → AiOcrResponse; strip code fences, ambil objek JSON walau dibungkus prosa. */
+function parseOcrText(text: string): AiOcrResponse {
+  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  return JSON.parse(slice) as AiOcrResponse;
 }
