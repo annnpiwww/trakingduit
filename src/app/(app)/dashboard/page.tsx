@@ -119,9 +119,10 @@ export default function DashboardPage() {
     async () => {
       await db().transactions.count();
       await db().wallets.count();
-      return allWalletBalances();
+      // Balance at the end of the selected month (past month = snapshot then).
+      return allWalletBalances(monthRange(month).to);
     },
-    [],
+    [month],
   );
   const monthTx = useLiveQuery(() => {
     const { from, to } = monthRange(month);
@@ -132,13 +133,13 @@ export default function DashboardPage() {
       .toArray();
   }, [month]);
 
-  // Get bills for current month (upcoming & overdue)
+  // Get bills due within the selected month
   const bills = useLiveQuery(() => {
-    const today = toDateKey();
+    const { from, to } = monthRange(month);
     return db()
-      .bills.filter((b) => !b.deleted && !b.archived && b.due_date >= today)
+      .bills.filter((b) => !b.deleted && !b.archived && b.due_date >= from && b.due_date <= to)
       .sortBy("due_date");
-  }, []);
+  }, [month]);
 
   const isLoading = wallets === undefined || monthTx === undefined || balances === undefined;
 
@@ -198,7 +199,7 @@ export default function DashboardPage() {
           <p className="truncate text-base leading-tight font-bold tracking-tight sm:text-xl">
             Hai, {displayName} 👋
           </p>
-          <p className="mt-1 truncate text-[11px] text-muted sm:text-xs">Gimana duit lo hari ini?</p>
+          <p className="mt-1 truncate text-[11px] text-muted sm:text-xs">Gimana duitmu hari ini?</p>
         </div>
         <div className="shrink-0">
           <MonthSwitcher value={month} onChange={setMonth} />
@@ -257,7 +258,7 @@ export default function DashboardPage() {
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold tracking-tight">Tanya Tradu ✨</span>
           <span className="mt-0.5 block truncate text-xs text-muted">
-            Tanya soal duit lo, roast pengeluaran, tips nabung...
+            Butuh analisa terkait keuanganmu? sini sharing sama tradu
           </span>
         </span>
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-2 text-muted transition-all duration-200 group-hover:bg-brand group-hover:text-brand-fg">

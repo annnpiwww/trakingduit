@@ -107,7 +107,7 @@ export function TraduChat({
           id: "welcome",
           role: "assistant",
           content:
-            "Yo! Gw Tradu, temen lo yg ngerti soal duit. Mau nanya apa? Roast pengeluaran, tips nabung, atau curhat soal dompet tipis? 😎",
+            "Halo! Aku Tradu, asisten keuangankamu. Butuh analisis keuangan, saran hemat, atau tips kelola anggaran? Sini sharing bareng aku! 😊",
         },
       ]);
     }
@@ -178,7 +178,7 @@ export function TraduChat({
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: "Duh boncos, koneksi AI Tradu lagi putus. Coba tanya lagi bentar ya! 🫥",
+            content: "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
           },
         ]);
       } finally {

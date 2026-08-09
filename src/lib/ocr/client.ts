@@ -75,13 +75,14 @@ export function preprocess(dataUrl: string): Promise<string> {
   });
 }
 
-/** Map Gemini's structured extraction straight into ParsedReceipt, skipping regex. */
+/** Map AI structured extraction straight into ParsedReceipt, skipping regex. */
 function structuredToParsed(s: {
   merchant?: string;
   address?: string;
   date?: string;
   total?: number;
   tax?: number;
+  category?: string;
   items?: { name: string; qty?: number; unit?: string; price: number }[];
 }): ParsedReceipt {
   return reconcileItemTotal({
@@ -91,75 +92,49 @@ function structuredToParsed(s: {
     total: s.total,
     tax: s.tax,
     items: (s.items ?? []).filter((i) => i && i.name && i.price > 0),
-    category_hint: s.merchant?.toLowerCase(),
+    category_hint: s.category?.toLowerCase() || s.merchant?.toLowerCase(),
     confidence: 0.9,
   });
 }
 
-/** Server-side Gemini Flash — best for thermal receipts, structured extraction. */
-async function tryGemini(dataUrl: string): Promise<OcrResult | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch("/api/ocr/gemini", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: dataUrl }),
-    });
-    if (res.status === 429) {
-      // Middleware rate limit window — back off and retry once before falling back.
-      if (attempt < 2) await new Promise((r) => setTimeout(r, 2500));
-      continue;
-    }
-    if (!res.ok) return null;
-    const json = (await res.json()) as { text?: string; structured?: Record<string, unknown> };
-    if (!json.text?.trim()) return null;
-    const structured = json.structured as Parameters<typeof structuredToParsed>[0] | undefined;
-    if (structured && (structured.merchant || structured.total || (structured.items?.length ?? 0) > 0)) {
-      return { text: json.text, parsed: structuredToParsed(structured), engine: "ai-ocr" };
-    }
-    return { text: json.text, engine: "ai-ocr" };
-  }
-  return null;
-}
-
-/** Server-side Google Vision — only answers when the API key is configured. */
-async function tryVision(dataUrl: string): Promise<OcrResult | null> {
+/** Server-side AI OCR (ocrgambar-copy via /api/ocr) — structured extraction. */
+async function tryAiOcr(dataUrl: string): Promise<OcrResult | null> {
   try {
     const res = await fetch("/api/ocr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: dataUrl }),
+      signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { text?: string };
+    const json = (await res.json()) as { text?: string; structured?: Record<string, unknown> };
     if (!json.text?.trim()) return null;
-    return { text: json.text, engine: "google-vision" };
+    const structured = json.structured as Parameters<typeof structuredToParsed>[0] | undefined;
+    // Incomplete extraction (no merchant/total/items) → fall back to Tesseract.
+    if (structured && (structured.merchant || structured.total || (structured.items?.length ?? 0) > 0)) {
+      return { text: json.text, parsed: structuredToParsed(structured), engine: "ai-ocr" };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 /**
- * Gemini Flash first (best accuracy + structured extraction), Google Vision
- * second, Tesseract in the browser as the always-available fallback.
+ * Hybrid scan: AI OCR (ocrgambar-copy) first — best accuracy + structured
+ * extraction. Jika gagal, timeout, atau hasilnya tidak lengkap, langsung
+ * jatuh ke Tesseract.js di browser sebagai fallback yang selalu tersedia.
  */
 export async function runOcr(
   dataUrl: string,
   onProgress?: (ratio: number, stage: string) => void,
 ): Promise<OcrResult> {
-  onProgress?.(0.05, "Mengirim ke OCR");
-  
-  // Try Gemini first (free tier, best for receipts)
-  const gemini = await tryGemini(dataUrl);
-  if (gemini) {
-    onProgress?.(1, "Selesai");
-    return gemini;
-  }
+  onProgress?.(0.05, "Mengirim ke OCR AI");
 
-  // Fall back to Google Vision
-  const vision = await tryVision(dataUrl);
-  if (vision) {
+  const ai = await tryAiOcr(dataUrl);
+  if (ai) {
     onProgress?.(1, "Selesai");
-    return vision;
+    return ai;
   }
 
   onProgress?.(0.15, "Menyiapkan gambar");

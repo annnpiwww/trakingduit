@@ -5,7 +5,7 @@ import { db, resetAll, seedIfEmpty } from "./db";
 import type { UserProfile } from "./types";
 import { hashPin, newId, nowISO } from "./utils";
 import { isSupabaseConfigured, supabaseBrowser } from "./supabase";
-import { syncSupabase } from "./sync/supabase-sync";
+import { fetchCloudProfile, onProfileSynced, syncSupabase } from "./sync/supabase-sync";
 
 const PROFILE_ID = "me";
 const UNLOCK_KEY = "td.unlocked";
@@ -79,6 +79,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     void resolve();
   }, [resolve]);
+
+  // Cloud profile berubah saat sync (device lain edit nama/avatar) →
+  // update React state langsung biar greeting/avatar sinkron tanpa reload.
+  React.useEffect(() => {
+    return onProfileSynced((p) => {
+      setProfile(p);
+    });
+  }, []);
 
   const signInLocal = React.useCallback(
     async (name: string, pin?: string) => {
@@ -217,26 +225,43 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // jangan push — biar nggak nimpa nama yang diedit di device lain
             // (lost-update race: edit warna di device yg namanya stale).
             const prevMs = current.updated_at ? Date.parse(current.updated_at) : 0;
-            const { data: cloudProfile } = await sb
-              .from("profiles")
-              .select("updated_at, avatar_url")
-              .eq("id", next.supabase_user_id)
-              .maybeSingle();
+            const { profile: cloudProfile, hasAvatarUrl } = await fetchCloudProfile(
+              sb,
+              next.supabase_user_id,
+            );
             const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
+            // Cloud-wins cuma kalau device ini sudah pernah sync (prevMs > 0) dan
+            // cloud berubah setelah base lokal terakhir. Device baru yang belum
+            // sempat sync (prevMs = 0) → edit lokal tetap di-push (LWW normal).
+            if (prevMs > 0 && cloudMs > prevMs && cloudProfile) {
+              // Cloud lebih baru dari base lokal → adopsi versi cloud ke Dexie +
+              // session, biar edit stale di device ini gak nge-overwrite nama/
+              // avatar yang diedit di device lain (dan sync berikutnya gak
+              // nge-push ulang versi lokal yang sudah kalah).
+              const adopted: UserProfile = {
+                ...next,
+                name: cloudProfile.name,
+                avatar_color: cloudProfile.avatar_color,
+                avatar_url: hasAvatarUrl ? (cloudProfile.avatar_url ?? undefined) : undefined,
+                updated_at: cloudProfile.updated_at ?? next.updated_at,
+              };
+              await db().profile.put(adopted);
+              setProfile(adopted);
+              return;
+            }
             if (cloudMs <= prevMs) {
               // avatar_url fallback ke cloud: edit nama aja jangan null-kan
-              // avatar yang di-upload di device lain.
-              await sb.from("profiles").upsert(
-                {
-                  id: next.supabase_user_id,
-                  name: next.name,
-                  avatar_color: next.avatar_color,
-                  email: next.email,
-                  avatar_url: next.avatar_url ?? cloudProfile?.avatar_url ?? null,
-                  updated_at: next.updated_at,
-                },
-                { onConflict: "id" },
-              );
+              // avatar yang di-upload di device lain. Key di-omit kalau kolom
+              // belum ada di remote (schema legacy) biar PostgREST gak error.
+              const payload: Record<string, unknown> = {
+                id: next.supabase_user_id,
+                name: next.name,
+                avatar_color: next.avatar_color,
+                email: next.email,
+                updated_at: next.updated_at,
+              };
+              if (hasAvatarUrl) payload.avatar_url = next.avatar_url ?? cloudProfile?.avatar_url ?? null;
+              await sb.from("profiles").upsert(payload, { onConflict: "id" });
             }
           } catch (e) {
             console.error("Gagal push profil ke cloud:", e);

@@ -119,7 +119,9 @@ export async function walletBalance(walletId: ID): Promise<number> {
   return balance;
 }
 
-export async function allWalletBalances(): Promise<Record<ID, number>> {
+/** Balance per wallet, optionally cut off at `upToDate` (YYYY-MM-DD, inclusive)
+ *  so the dashboard can show the balance at the end of a selected past month. */
+export async function allWalletBalances(upToDate?: string): Promise<Record<ID, number>> {
   const d = db();
   const [wallets, txs] = await Promise.all([
     d.wallets.filter((w) => !w.deleted && !w.archived).toArray(),
@@ -128,6 +130,7 @@ export async function allWalletBalances(): Promise<Record<ID, number>> {
   const map: Record<ID, number> = {};
   for (const w of wallets) map[w.id] = w.initial_balance;
   for (const t of txs) {
+    if (upToDate && t.date > upToDate) continue;
     if (t.wallet_id in map) {
       map[t.wallet_id] += t.type === "income" ? t.amount : -t.amount;
     }

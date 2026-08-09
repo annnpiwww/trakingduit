@@ -4,14 +4,14 @@ import { isSupabaseConfigured, supabaseFromRequest } from "@/lib/supabase";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Konfigurasi via env (jangan simpan secret di source). Set di Vercel:
-//   TRADU_API_URL  -> contoh: https://<tunnel>.trycloudflare.com/v1
-//   TRADU_API_KEY  -> API key (mis. sk-...)
+// Konfigurasi: env opsional, ada default hardcoded (jangan diubah tanpa izin):
+//   TRADU_API_URL  -> default https://platinum-verbal-described-pty.trycloudflare.com/v1
+//   TRADU_API_KEY  -> default sk-23a9722ed5683fbd-bb8289-2bf96105
 //   TRADU_MODEL    -> default "hermes"
 //   GEMINI_API_KEY -> fallback langsung ke Google Gemini API
 //   GEMINI_TRADU_MODEL -> default "gemini-2.0-flash"
-const API_URL = process.env.TRADU_API_URL;
-const API_KEY = process.env.TRADU_API_KEY;
+const API_URL = process.env.TRADU_API_URL ?? "https://platinum-verbal-described-pty.trycloudflare.com/v1";
+const API_KEY = process.env.TRADU_API_KEY ?? "sk-23a9722ed5683fbd-bb8289-2bf96105";
 const MODEL = process.env.TRADU_MODEL ?? "hermes";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-2.0-flash";
@@ -46,16 +46,17 @@ Transaksi Terakhir:
 ${financialContext.recentTransactions?.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) Rp${tx.amount.toLocaleString("id-ID")}`).join("\n") || "- (Belum ada transaksi)"}
 ` : "";
 
-    const systemPrompt = `Kamu adalah Tradu (Trakingduit), asisten dan teman finansial pribadi berbasis AI untuk Gen Z.
+    const systemPrompt = `Kamu adalah Tradu (Trakingduit), asisten keuangan pribadi berbasis AI yang cerdas, ramah, empatik, dan analitis untuk Gen Z.
+
 Ciri khas bahasamu:
-- Menggunakan bahasa santai/gaul/informal Indonesia kekinian (lo, gue, boncos, anjir, gokil, foya-foya, rebahan, dll).
-- Blak-blakan, sarkas, tapi tetap ramah dan peduli.
-- Suka me-roast pengeluaran mereka secara jenaka jika mereka boros (pengeluaran > pemasukan, belanja tak berfaedah), namun tetap memberikan tips finansial yang taktis, logis, dan konkret.
+- Menggunakan bahasa Indonesia yang santai, hangat, dan mudah dipahami — gaul ringan, tapi tidak sarkas dan tidak pernah me-roast atau menyalahkan pengeluaran pengguna.
+- Selalu ramah, empatik, dan mendukung. Fokus pada solusi, bukan menghakimi.
+- Analitis dan taktis: berikan analisis keuangan yang jelas, tips menabung yang konkret, dan saran kelola anggaran yang logis serta bisa langsung dipraktikkan.
 - Jawab singkat padat, langsung ke intinya, hindari bertele-tele atau ceramah formal. Maksimal 3-4 kalimat per respons.
 
 ${balanceStr}
 
-Dalam percakapan ini, tanggapi pertanyaan pengguna sesuai dengan kepribadian Tradu dan memanfaatkan data keuangan di atas jika relevan.`;
+Dalam percakapan ini, tanggapi pertanyaan pengguna sesuai dengan kepribadian Tradu dan manfaatkan data keuangan di atas jika relevan.`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
@@ -89,7 +90,10 @@ Dalam percakapan ini, tanggapi pertanyaan pengguna sesuai dengan kepribadian Tra
     }
 
     if (!reply) {
-      return NextResponse.json({ error: "Empty response from AI" }, { status: 502 });
+      return NextResponse.json(
+        { error: "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~" },
+        { status: 502 },
+      );
     }
 
     return NextResponse.json({ reply });
@@ -105,7 +109,7 @@ interface ApiMessage {
 
 /** Panggil OpenAI-compatible proxy; throw kalau gagal. */
 async function chatViaOpenAI(apiMessages: ApiMessage[]): Promise<string> {
-  const res = await fetch(`${API_URL}/chat/completions`, {
+  const res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -120,13 +124,19 @@ async function chatViaOpenAI(apiMessages: ApiMessage[]): Promise<string> {
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API Error (${res.status}): ${errorText}`);
+    const errorText = await res.text().catch(() => "");
+    throw new Error(`API Error (${res.status}): ${errorText.slice(0, 500)}`);
   }
 
-  const data = await res.json();
-  const reply = data.choices?.[0]?.message?.content;
-  if (!reply) throw new Error("Empty response from AI");
+  const data = await res.json().catch(() => null);
+  const content = data?.choices?.[0]?.message?.content;
+  const reply =
+    typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.map((p: any) => (typeof p === "string" ? p : p?.text ?? "")).join("")
+        : "";
+  if (!reply?.trim()) throw new Error("Empty response from AI");
   return reply;
 }
 

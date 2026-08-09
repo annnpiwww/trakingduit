@@ -6,8 +6,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 // Rate limit config per endpoint pattern
 const RATE_LIMITS = {
-  "/api/ocr/gemini": { maxRequests: 60, windowMs: 60000 }, // 60 req/min — AI OCR (gemma via OmniRoute)
-  "/api/ocr": { maxRequests: 10, windowMs: 60000 }, // 10 req/min — Google Vision
+  "/api/ocr": { maxRequests: 60, windowMs: 60000 }, // 60 req/min — AI OCR (ocrgambar-copy via tunnel)
   "/api/insight": { maxRequests: 5, windowMs: 60000 }, // 5 req/min
   "/api/sync/google-sheet": { maxRequests: 20, windowMs: 60000 }, // 20 req/min
   "/api/auth/login": { maxRequests: 5, windowMs: 300000 }, // 5 req/5min (brute force protection)

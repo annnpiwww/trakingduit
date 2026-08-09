@@ -1,10 +1,11 @@
 "use client";
 
 import type { Table } from "dexie";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { db, getSetting, setSetting, seedIfEmpty } from "../db";
 import { pushNotification } from "../repo";
 import { supabaseBrowser } from "../supabase";
-import type { Category, Syncable, SyncLog } from "../types";
+import type { Category, Syncable, SyncLog, UserProfile } from "../types";
 import { nowISO } from "../utils";
 
 export const LAST_SUPABASE_SYNC = "sync.supabase.lastAt";
@@ -132,6 +133,81 @@ function pickCategorySurvivors<T extends { id: string; is_default?: number; upda
   return out;
 }
 
+/* ----------------------------- Profile sync ----------------------------- */
+
+export interface CloudProfile {
+  id: string;
+  name: string;
+  avatar_color: string;
+  email?: string | null;
+  avatar_url?: string | null;
+  updated_at?: string | null;
+}
+
+/** Kolom yang di-select dari `profiles`. Kalau `avatar_url` belum ke-migrasi
+ *  di remote, PostgREST error — fetch ulang tanpa kolom itu (fallback). */
+const PROFILE_COLS = ["id", "name", "avatar_color", "email", "avatar_url", "updated_at"];
+const PROFILE_COLS_LEGACY = ["id", "name", "avatar_color", "email", "updated_at"];
+
+export interface CloudProfileResult {
+  profile: CloudProfile | null;
+  /** false kalau kolom avatar_url belum ada di remote (schema legacy). */
+  hasAvatarUrl: boolean;
+}
+
+export async function fetchCloudProfile(
+  sb: SupabaseClient,
+  userId: string,
+): Promise<CloudProfileResult> {
+  const { data, error } = await sb
+    .from("profiles")
+    .select(PROFILE_COLS.join(", "))
+    .eq("id", userId)
+    .maybeSingle();
+  if (!error) return { profile: (data as unknown as CloudProfile) ?? null, hasAvatarUrl: true };
+  // avatar_url belum ada di schema remote → ulang tanpa kolom itu.
+  const retry = await sb
+    .from("profiles")
+    .select(PROFILE_COLS_LEGACY.join(", "))
+    .eq("id", userId)
+    .maybeSingle();
+  if (retry.error) throw new Error(retry.error.message);
+  return { profile: (retry.data as unknown as CloudProfile) ?? null, hasAvatarUrl: false };
+}
+
+async function pushCloudProfile(
+  sb: SupabaseClient,
+  payload: CloudProfile,
+): Promise<void> {
+  const { error } = await sb.from("profiles").upsert(payload, { onConflict: "id" });
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Profil berubah setelah sync (device lain edit nama/avatar) → kabari React
+ * session biar UI langsung pakai versi terbaru tanpa reload.
+ */
+type ProfileListener = (profile: UserProfile) => void;
+const profileListeners = new Set<ProfileListener>();
+
+export function onProfileSynced(listener: ProfileListener): () => void {
+  profileListeners.add(listener);
+  return () => {
+    profileListeners.delete(listener);
+  };
+}
+
+function emitProfileSynced(profile: UserProfile) {
+  for (const listener of profileListeners) listener(profile);
+}
+
+/** Patch lokal dianggap lebih baru dari cloud? (last-write-wins). */
+function isLocalNewer(localAt: string | undefined, cloudAt: string | null | undefined): boolean {
+  const localMs = localAt ? Date.parse(localAt) : 0;
+  const cloudMs = cloudAt ? Date.parse(cloudAt) : 0;
+  return localMs > cloudMs;
+}
+
 /**
  * Tarik kategori dari cloud. Kalau cloud kirim salinan yang kalah "berhak"
  * dibanding kategori lokal (mis. id default vs id acak legacy), buang yang
@@ -215,46 +291,45 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
     }
 
     /* Sync profile (nama, warna) dua arah. Tabel `profiles` id-nya = auth uid
-       (beda dari tabel lain yang id-nya uuid acak), jadi ditangani khusus,        bukan lewat TABLES generic. Avatar_url ikut di-sync (kolom ada di
-        remote profiles sejak migration add_avatar_url_column.sql). */
+       (beda dari tabel lain yang id-nya uuid acak), jadi ditangani khusus,
+       bukan lewat TABLES generic. Avatar_url ikut di-sync (kolom ada di
+       remote profiles sejak migration add_avatar_url_column.sql). */
     /* Profile sync sengaja di-try/catch sendiri: kalau gagal (mis. kolom
        avatar_url belum ke-migrasi di remote), jangan bunuh sync tabel data
        — cukup lewati profil & lanjut. */
     try {
       const localProfile = await db().profile.get("me");
       if (localProfile?.supabase_user_id === userId) {
-        const { data: cloudProfile } = await sb
-          .from("profiles")
-          .select("id, name, avatar_color, email, avatar_url, updated_at")
-          .eq("id", userId)
-          .maybeSingle();
+        const { profile: cloudProfile, hasAvatarUrl } = await fetchCloudProfile(sb, userId);
         const localAt = localProfile.updated_at; // undefined = belum ada edit lokal
-        const localMs = localAt ? Date.parse(localAt) : 0;
-        const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
-        if (localAt && localMs > cloudMs) {
+        if (localAt && isLocalNewer(localAt, cloudProfile?.updated_at)) {
           // User pernah edit nama di device ini & lebih baru → push ke cloud.
           // Jangan timpa avatar cloud dengan null kalau lokal nggak punya.
-          const { error } = await sb.from("profiles").upsert(
-            {
-              id: userId,
-              name: localProfile.name,
-              avatar_color: localProfile.avatar_color,
-              email: localProfile.email ?? cloudProfile?.email,
-              avatar_url: localProfile.avatar_url ?? cloudProfile?.avatar_url ?? null,
-              updated_at: localAt,
-            },
-            { onConflict: "id" },
-          );
-          if (error) throw new Error(`profiles: ${error.message}`);
+          await pushCloudProfile(sb, {
+            id: userId,
+            name: localProfile.name,
+            avatar_color: localProfile.avatar_color,
+            email: localProfile.email ?? cloudProfile?.email ?? null,
+            // undefined → key di-omit saat JSON.stringify, jadi kolom legacy
+            // yang belum ada avatar_url gak bikin PostgREST error.
+            avatar_url: hasAvatarUrl
+              ? (localProfile.avatar_url ?? cloudProfile?.avatar_url ?? null)
+              : undefined,
+            updated_at: localAt,
+          });
           pushed++;
-        } else if (cloudProfile && (!localAt || cloudMs > localMs)) {
-          // Device baru / cloud lebih baru → ikutin nama dari cloud.
-          await db().profile.update("me", {
+        } else if (cloudProfile && (!localAt || !isLocalNewer(localAt, cloudProfile.updated_at))) {
+          // Device baru / cloud lebih baru → ikutin nama dari cloud, dan kabari
+          // session biar UI (greeting, avatar) langsung pakai versi terbaru.
+          const cloudPulled: UserProfile = {
+            ...localProfile,
             name: cloudProfile.name,
             avatar_color: cloudProfile.avatar_color,
-            avatar_url: cloudProfile.avatar_url ?? undefined,
-            updated_at: cloudProfile.updated_at,
-          });
+            avatar_url: hasAvatarUrl ? (cloudProfile.avatar_url ?? undefined) : undefined,
+            updated_at: cloudProfile.updated_at ?? undefined,
+          };
+          await db().profile.put(cloudPulled);
+          emitProfileSynced(cloudPulled);
           pulled++;
         }
       }

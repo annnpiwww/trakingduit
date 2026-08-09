@@ -28,6 +28,7 @@ create table if not exists profiles (
   name text not null default 'Pengguna',
   email text,
   avatar_color text not null default '#0f9d76',
+  avatar_url text,
   currency text not null default 'IDR',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
