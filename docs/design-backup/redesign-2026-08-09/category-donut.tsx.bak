@@ -1,0 +1,88 @@
+"use client";
+
+import * as React from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import type { CategorySlice } from "@/lib/analytics";
+import { cn, formatCompactIDR, formatIDR } from "@/lib/utils";
+
+const R = 52;
+const SW = 15;
+const C = 2 * Math.PI * R;
+
+/** Animated multi-segment donut + top-5 legend with share bars. */
+export function CategoryDonut({
+  slices,
+  total,
+  className,
+}: {
+  slices: CategorySlice[];
+  total: number;
+  className?: string;
+}) {
+  const reduced = useReducedMotion();
+  const top = slices.slice(0, 5);
+
+  let acc = 0;
+  const segs = top.map((s) => {
+    const len = Math.max((s.share || 0) * C - 2, 0.5); // 2px gap between segments
+    const seg = { ...s, dash: len, offset: acc };
+    acc += (s.share || 0) * C;
+    return seg;
+  });
+
+  const empty = total <= 0;
+
+  return (
+    <div className={cn(className)}>        <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-6">
+          {/* donut + legend */}
+        <div className="relative shrink-0" style={{ width: 136, height: 136 }}>
+          <svg width={136} height={136} viewBox="0 0 136 136" className="-rotate-90" role="img" aria-label={empty ? "Belum ada pengeluaran" : `Pengeluaran ${formatIDR(total)}`}>
+            <circle cx={68} cy={68} r={R} fill="none" stroke="var(--surface-2)" strokeWidth={SW} />
+            {!empty &&
+              segs.map((s, i) => (
+                <motion.circle
+                  key={s.category_id}
+                  cx={68}
+                  cy={68}
+                  r={R}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={SW}
+                  strokeDasharray={`${s.dash} ${C - s.dash}`}
+                  strokeDashoffset={s.offset}
+                  initial={reduced ? { strokeDasharray: `${s.dash} ${C - s.dash}` } : { strokeDasharray: `0 ${C}` }}
+                  animate={{ strokeDasharray: `${s.dash} ${C - s.dash}` }}
+                  transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 + i * 0.07 }}
+                />
+              ))}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="num text-xl font-bold tracking-tight">
+              {empty ? "—" : formatCompactIDR(total)}
+            </span>
+            <span className="mt-0.5 text-[10px] text-muted">bulan ini</span>
+          </div>
+        </div>
+
+        <div className="w-full min-w-0 flex-1">
+          {empty ? (
+            <p className="py-6 text-center text-xs text-muted">Belum ada pengeluaran bulan ini.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {top.map((s) => (
+                <li key={s.category_id} className="flex items-center gap-2.5">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ background: s.color }} aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">{s.name}</span>
+                  <span className="shrink-0 text-[11px] text-muted">{Math.round(s.share * 100)}%</span>
+                  <span className="num w-20 shrink-0 text-right text-xs font-semibold">
+                    {formatCompactIDR(s.total)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

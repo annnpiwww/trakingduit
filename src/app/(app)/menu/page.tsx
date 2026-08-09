@@ -7,6 +7,7 @@ import {
   ChartPie,
   ChevronRight,
   CreditCard,
+  HandCoins,
   LogOut,
   ScanLine,
   Settings,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/scan", label: "Scan Nota", desc: "Foto struk, auto-catat jadi transaksi", icon: ScanLine },
   { href: "/wallets", label: "Dompet", desc: "Atur dompet, bank, & e-wallet kamu", icon: Wallet },
+  { href: "/debts", label: "Utang Piutang", desc: "Catat utang & piutang, biar nggak lupa nagih", icon: HandCoins },
   { href: "/budgets", label: "Budget", desc: "Set budget, biar gak boncos", icon: CreditCard },
   { href: "/goals", label: "Target Nabung", desc: "Pantau progres menabung", icon: Target },
   { href: "/bills", label: "Tagihan & Cicilan", desc: "Pengingat jatuh tempo", icon: CalendarClock },
@@ -85,7 +87,7 @@ export default function MenuPage() {
       </Button>
 
       <p className="text-center text-xs text-muted">
-        TrackingDuit v1.10.2
+        TrackingDuit v1.11.0
       </p>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />

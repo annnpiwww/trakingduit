@@ -1,34 +1,40 @@
-# Design Backup — Redesign Dashboard (2026-08-09)
+# Design Backup — Dashboard (2026-08-09)
 
-Simpanan versi **sebelum** redesign dashboard, biar gampang balik kalau hasilnya
-nggak sesuai selera.
+## Status akhir (keputusan user)
 
-## Isi
+Dashboard **balik ke tampilan asli** + **2 fitur tambahan** yang disukai dari redesign:
+
+1. **Background "Rp"** raksasa di kartu saldo (watermark).
+2. **Mood chip** di kartu saldo — dihitung dari data asli (sisa ÷ pemasukan):
+   🤑 Duit aman · 😌 Aman, tahan dikit dong · 🤏 **Nyaris abis, sabar** · 🔥 Waduh minus · 👀 Belum ada catatan.
+
+Implementasi: `src/app/(app)/dashboard/page.tsx` (asli + mood) dan prop opsional
+`watermark` + `chip` di `BalanceCard` (`src/components/ui/index.tsx`).
+
+## Isi folder
 
 | File | Keterangan |
 | --- | --- |
-| `2026-08-09-dashboard-page-asli.tsx` | `src/app/(app)/dashboard/page.tsx` persis sebelum redesign |
+| `2026-08-09-dashboard-page-asli.tsx.bak` | Halaman dashboard **asli** (persis sebelum redesign) |
+| `redesign-2026-08-09/*.tsx.bak` | Arsip **redesign bento** yang diganti (balance-hero, cashflow-mini, category-donut, page baru) |
+| `screenshots/before/` | 18 screenshot (desktop+mobile) versi **lama** |
+| `screenshots/after/` | 18 screenshot (desktop+mobile) versi **saat ini** (asli + watermark + mood) |
 
-## Cara balik ke versi lama
+> File backup sengaja di-ext `.tsx.bak` supaya tidak ikut di-compile TypeScript/Next.
 
-Ada 2 jalur (bebas pilih):
-
-### 1. Lewat git (paling gampang)
-
-Backup ini di-commit sebagai restore point di `main` (lihat log git). Untuk
-balikin dashboard ke versi lama:
+## Cara balik ke versi lain
 
 ```bash
-git log --oneline -5              # cari commit "chore: backup dashboard sebelum redesign"
-git checkout <commit> -- "src/app/(app)/dashboard/page.tsx"
-# lalu hapus komponen baru kalau mau:
-rm -rf src/components/dashboard
-git checkout <commit> -- docs/design-backup
-```
+# ke tampilan asli tanpa fitur tambahan (restore point git)
+git checkout 85b495a -- "src/app/(app)/dashboard/page.tsx"
+git checkout 85b495a -- src/components/ui/index.tsx   # kalau mau BalanceCard polos juga
 
-### 2. Salin manual
-
-```bash
-cp "docs/design-backup/2026-08-09-dashboard-page-asli.tsx" "src/app/(app)/dashboard/page.tsx"
-rm -rf src/components/dashboard   # komponen baru yang tidak dipakai lagi
+# ke redesign bento (kalau pengen coba lagi)
+cp "docs/design-backup/redesign-2026-08-09/dashboard-page-baru.tsx.bak" \
+   "src/app/(app)/dashboard/page.tsx"
+mkdir -p src/components/dashboard
+cp "docs/design-backup/redesign-2026-08-09/balance-hero.tsx.bak" src/components/dashboard/balance-hero.tsx
+cp "docs/design-backup/redesign-2026-08-09/cashflow-mini.tsx.bak" src/components/dashboard/cashflow-mini.tsx
+cp "docs/design-backup/redesign-2026-08-09/category-donut.tsx.bak" src/components/dashboard/category-donut.tsx
+# (renama ulang ke .tsx dulu kalau mau)
 ```

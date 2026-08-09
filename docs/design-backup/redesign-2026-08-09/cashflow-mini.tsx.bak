@@ -1,0 +1,80 @@
+"use client";
+
+import * as React from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import type { DailyPoint } from "@/lib/analytics";
+import { cn, formatIDR } from "@/lib/utils";
+
+const HALF = 54; // max bar half-height (px) above/below the baseline
+
+/** Diverging bars: income grows up (green), expense digs down (red). */
+export function CashflowMini({ data, className }: { data: DailyPoint[]; className?: string }) {
+  const last = data.slice(-7);
+  const max = Math.max(...last.map((d) => Math.max(d.income, d.expense)), 1);
+  const hasData = last.some((d) => d.income > 0 || d.expense > 0);
+  const reduced = useReducedMotion();
+
+  if (!hasData) {
+    return (
+      <p className={cn("py-8 text-center text-xs text-muted", className)}>
+        Belum ada uang masuk/keluar 7 hari terakhir.
+      </p>
+    );
+  }
+
+  const totalIn = last.reduce((a, d) => a + d.income, 0);
+  const totalOut = last.reduce((a, d) => a + d.expense, 0);
+
+  return (
+    <div className={cn(className)} role="img" aria-label={`7 hari terakhir: ${formatIDR(totalIn)} masuk, ${formatIDR(totalOut)} keluar`}>
+      <div className="mb-2 flex items-center justify-end gap-4 text-[11px] text-muted">
+        <span className="flex items-center gap-1.5">
+          <ArrowDownLeft className="size-3 text-income" /> Masuk
+        </span>
+        <span className="flex items-center gap-1.5">
+          <ArrowUpRight className="size-3 text-expense" /> Keluar
+        </span>
+      </div>
+
+      <div className="relative">
+        {/* baseline */}
+        <div aria-hidden className="absolute inset-x-0 top-1/2 h-px bg-border" />
+        <div className="relative grid h-[124px] grid-cols-7 gap-1.5 sm:gap-3">
+          {last.map((d, i) => (
+            <div key={d.date} className="relative flex flex-col items-center">
+              {/* income — above baseline */}
+              {d.income > 0 ? (
+                <motion.div
+                  className="absolute inset-x-[18%] bottom-1/2 rounded-t-[5px] bg-income/85"
+                  initial={reduced ? { height: `${(d.income / max) * HALF}px` } : { height: 0 }}
+                  animate={{ height: `${(d.income / max) * HALF}px` }}
+                  transition={{ type: "spring", stiffness: 240, damping: 22, delay: i * 0.04 }}
+                  title={`${formatIDR(d.income)} masuk`}
+                />
+              ) : null}
+              {/* expense — below baseline */}
+              {d.expense > 0 ? (
+                <motion.div
+                  className="absolute inset-x-[18%] top-1/2 rounded-b-[5px] bg-expense/85"
+                  initial={reduced ? { height: `${(d.expense / max) * HALF}px` } : { height: 0 }}
+                  animate={{ height: `${(d.expense / max) * HALF}px` }}
+                  transition={{ type: "spring", stiffness: 240, damping: 22, delay: i * 0.04 }}
+                  title={`${formatIDR(d.expense)} keluar`}
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+        {/* day labels */}
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5 sm:gap-3">
+          {last.map((d) => (
+            <span key={d.date} className="text-center text-[10px] text-muted">
+              {d.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -16,6 +16,7 @@ const PAGES = [
   "transactions",
   "wallets",
   "scan",
+  "debts",
   "budgets",
   "goals",
   "bills",
@@ -46,18 +47,23 @@ async function shot(name) {
 await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
 // Form baru dirender setelah sesi selesai resolve (sebelum itu cuma spinner),
 // jadi tunggu salah satu penanda form muncul dulu.
-await page.waitForSelector('[role="tablist"], input[placeholder="cth. Aan"]', {
+await page.waitForSelector('[role="tablist"], input[placeholder="Nama kamu siapa?"]', {
   timeout: 20_000,
 });
-// Saat env Supabase terisi, login default pindah ke tab "Akun Cloud".
+// Saat env Supabase terisi, login default pindah ke tab "Pake Akun".
 // Smoke selalu pakai mode lokal supaya tidak butuh kredensial.
-const localTab = page.getByRole("tab", { name: "Lokal", exact: true });
+const localTab = page.getByRole("tab", { name: "Offline Aja", exact: true });
 if (await localTab.count()) await localTab.click();
-await page.getByPlaceholder("cth. Aan").fill("Aan");
+await page.getByPlaceholder("Nama kamu siapa?").fill("Aan");
 await shot("00-login");
-await page.getByRole("button", { name: "Mulai" }).click();
+await page.getByRole("button", { name: "Masuk" }).click();
 await page.waitForURL("**/dashboard", { timeout: 20_000 });
 await page.waitForTimeout(1200);
+
+// Tutorial onboarding pertama kali muncul — lewati biar nggak nutupin UI.
+const skipTutorial = page.getByRole("button", { name: "Lewati" });
+if (await skipTutorial.count()) await skipTutorial.click();
+await page.waitForTimeout(400);
 
 /* ------------------------------- seed wallets ----------------------------- */
 await page.goto(`${BASE}/wallets`, { waitUntil: "domcontentloaded" });
@@ -92,7 +98,7 @@ for (const tx of SEED) {
 /* --------------------------------- budget --------------------------------- */
 await page.goto(`${BASE}/budgets`, { waitUntil: "domcontentloaded" });
 await page.getByRole("button", { name: /Budget$|Buat budget/ }).first().click();
-await page.getByPlaceholder("cth. 1500000").fill("2000000");
+await page.getByPlaceholder("cth. 1.500.000").fill("2000000");
 await page.getByRole("button", { name: "Simpan" }).click();
 await page.waitForTimeout(700);
 
@@ -100,8 +106,16 @@ await page.waitForTimeout(700);
 await page.goto(`${BASE}/goals`, { waitUntil: "domcontentloaded" });
 await page.getByRole("button", { name: /Target Baru|Target baru/ }).first().click();
 await page.getByPlaceholder("cth. Dana Darurat").fill("Dana Darurat");
-await page.getByPlaceholder("10000000").fill("20000000");
+await page.getByPlaceholder("10.000.000").fill("20000000");
 await page.getByPlaceholder("0").last().fill("6500000");
+await page.getByRole("button", { name: "Simpan" }).click();
+await page.waitForTimeout(700);
+
+/* ---------------------------------- debt ---------------------------------- */
+await page.goto(`${BASE}/debts`, { waitUntil: "domcontentloaded" });
+await page.getByRole("button", { name: /Utang Piutang$/ }).first().click();
+await page.getByPlaceholder("cth. Andi, Warung Bu Sari, Rani").fill("Rani");
+await page.getByPlaceholder("0").first().fill("250000");
 await page.getByRole("button", { name: "Simpan" }).click();
 await page.waitForTimeout(700);
 

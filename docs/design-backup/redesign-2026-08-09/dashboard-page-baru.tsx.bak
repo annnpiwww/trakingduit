@@ -1,0 +1,626 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useLiveQuery } from "dexie-react-hooks";
+import { motion } from "framer-motion";
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarClock,
+  ChartPie,
+  ChevronRight,
+  ListOrdered,
+  ScanText,
+  Sparkles,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  WalletCards,
+} from "lucide-react";
+import { db } from "@/lib/db";
+import { allWalletBalances } from "@/lib/repo";
+import { byCategory, dailySeries, totals, type Totals } from "@/lib/analytics";
+import type { Bill, Category, Transaction, Wallet } from "@/lib/types";
+import { cn, formatIDR, monthRange, toDateKey, toMonthKey, addMonths } from "@/lib/utils";
+import { Card, EmptyState, Progress, Skeleton } from "@/components/ui";
+import { DynIcon } from "@/components/ui/icon";
+import { useSession } from "@/lib/session";
+import { MonthSwitcher } from "@/components/layout/month-switcher";
+import { TransactionSheet } from "@/components/transactions/transaction-sheet";
+import { TraduChat } from "@/components/tradu/tradu-chat";
+import { BalanceHero, type MoodChip } from "@/components/dashboard/balance-hero";
+import { CashflowMini } from "@/components/dashboard/cashflow-mini";
+import { CategoryDonut } from "@/components/dashboard/category-donut";
+
+type MenuTone = "brand" | "income" | "expense" | "warn" | "accent";
+
+const QUICK: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  tone: MenuTone;
+}[] = [
+  { href: "/scan", icon: ScanText, label: "Scan Struk", tone: "brand" },
+  { href: "/transactions", icon: ListOrdered, label: "Transaksi", tone: "income" },
+  { href: "/budgets", icon: TrendingDown, label: "Budget", tone: "expense" },
+  { href: "/goals", icon: Target, label: "Target", tone: "warn" },
+  { href: "/bills", icon: CalendarClock, label: "Tagihan", tone: "accent" },
+  { href: "/analytics", icon: ChartPie, label: "Analisis", tone: "brand" },
+  { href: "/wallets", icon: WalletCards, label: "Dompet", tone: "income" },
+];
+
+function computeMood(t: Totals): MoodChip {
+  if (t.count === 0) return { emoji: "👀", label: "Belum ada catatan bulan ini", tone: "muted" };
+  if (t.net < 0) return { emoji: "🔥", label: "Waduh, bulan ini minus", tone: "danger" };
+  const sr = t.income > 0 ? t.net / t.income : 1;
+  if (sr >= 0.3) return { emoji: "🤑", label: "Duit aman, gemes", tone: "good" };
+  if (sr >= 0.1) return { emoji: "😌", label: "Aman, tahan dikit dong", tone: "warn" };
+  return { emoji: "🤏", label: "Nyaris abis, sabar", tone: "warn" };
+}
+
+/** % change vs previous period; null when there's nothing to compare. */
+function delta(prev: number, cur: number): number | null {
+  if (!prev) return null;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
+export default function DashboardPage() {
+  const { profile } = useSession();
+  const [month, setMonth] = React.useState(toMonthKey());
+  const [hideBalance, setHideBalance] = React.useState(false);
+  const [editing, setEditing] = React.useState<Transaction | null>(null);
+  const [traduOpen, setTraduOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const val = localStorage.getItem("td.hideBalance") === "1";
+    setHideBalance(val);
+  }, []);
+
+  const toggleHideBalance = () => {
+    const next = !hideBalance;
+    setHideBalance(next);
+    localStorage.setItem("td.hideBalance", next ? "1" : "0");
+  };
+
+  const prevMonth = addMonths(month, -1);
+
+  const wallets = useLiveQuery(
+    () => db().wallets.filter((w) => !w.deleted && !w.archived).sortBy("order"),
+    [],
+  );
+  const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), []);
+  const balances = useLiveQuery(
+    async () => {
+      await db().transactions.count();
+      await db().wallets.count();
+      return allWalletBalances();
+    },
+    [],
+  );
+  const monthTx = useLiveQuery(() => {
+    const { from, to } = monthRange(month);
+    return db()
+      .transactions.where("date")
+      .between(from, to, true, true)
+      .filter((t) => !t.deleted)
+      .toArray();
+  }, [month]);
+  const prevTx = useLiveQuery(() => {
+    const { from, to } = monthRange(prevMonth);
+    return db()
+      .transactions.where("date")
+      .between(from, to, true, true)
+      .filter((t) => !t.deleted)
+      .toArray();
+  }, [prevMonth]);
+  const bills = useLiveQuery(() => {
+    const today = toDateKey();
+    return db()
+      .bills.filter((b) => !b.deleted && !b.archived && b.due_date >= today)
+      .sortBy("due_date");
+  }, []);
+  const budgets = useLiveQuery(() => db().budgets.filter((b) => !b.deleted).toArray(), []);
+
+  const isLoading =
+    wallets === undefined ||
+    categories === undefined ||
+    monthTx === undefined ||
+    prevTx === undefined ||
+    balances === undefined ||
+    budgets === undefined;
+
+  const t = totals(monthTx ?? []);
+  const prev = totals(prevTx ?? []);
+  const totalBalance = Object.values(balances ?? {}).reduce((a, b) => a + b, 0);
+
+  const slices = byCategory(monthTx ?? [], categories ?? [], "expense");
+  const expenseTotal = slices.reduce((a, s) => a + s.total, 0);
+
+  const daily = dailySeries(monthTx ?? [], month);
+
+  const mood = computeMood(t);
+  const deltaIncome = delta(prev.income, t.income);
+  const deltaExpense = delta(prev.expense, t.expense);
+
+  const recent = React.useMemo(
+    () =>
+      [...(monthTx ?? [])]
+        .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+        .slice(0, 4),
+    [monthTx],
+  );
+
+  const upcomingBills = bills?.slice(0, 3) ?? [];
+  const billsTotal = upcomingBills.reduce((sum, bill) => sum + bill.amount, 0);
+
+  const budgetRows = (budgets ?? [])
+    .map((b) => {
+      const spent = slices.find((s) => s.category_id === b.category_id)?.total ?? 0;
+      const cat = (categories ?? []).find((c) => c.id === b.category_id);
+      return { budget: b, cat, spent, pct: b.amount > 0 ? spent / b.amount : 0 };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 2);
+
+  const mask = (n: number) => (hideBalance ? "••••••" : formatIDR(n));
+
+  const rawName = profile?.display_name?.trim() || profile?.name?.trim() || "Kawan";
+  const displayName = rawName.includes("@") ? rawName.split("@")[0] : rawName;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
+        <Skeleton className="h-56 w-full rounded-3xl" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <Skeleton className="h-44 w-full rounded-2xl lg:col-span-2" />
+          <Skeleton className="h-44 w-full rounded-2xl" />
+        </div>
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
+      {/* Greeting + month switcher */}
+      <header className="flex w-full items-center justify-between gap-3 lg:col-span-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-bold tracking-tight sm:text-lg">
+            Hai, {displayName} 👋
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-muted sm:text-xs">
+            Gimana duit lo bulan ini?
+          </p>
+        </div>
+        <div className="shrink-0">
+          <MonthSwitcher value={month} onChange={setMonth} />
+        </div>
+      </header>
+
+      {/* Hero saldo — kartu utama */}
+      <BalanceHero
+        className="lg:col-span-2"
+        value={totalBalance}
+        hidden={hideBalance}
+        onToggleHide={toggleHideBalance}
+        walletCount={wallets?.length ?? 0}
+        mood={mood}
+      />
+
+      {/* Ringkasan masuk/keluar + delta bulan lalu */}
+      <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:grid-cols-1 lg:gap-4">
+        <CashTile
+          label="Masuk"
+          icon={<ArrowDownLeft className="size-4 text-income" />}
+          value={mask(t.income)}
+          delta={deltaIncome}
+          goodWhenUp
+          prevLabel={`Bulan lalu ${mask(prev.income)}`}
+        />
+        <CashTile
+          label="Keluar"
+          icon={<ArrowUpRight className="size-4 text-expense" />}
+          value={mask(t.expense)}
+          delta={deltaExpense}
+          goodWhenUp={false}
+          prevLabel={`Bulan lalu ${mask(prev.expense)}`}
+        />
+      </div>
+
+      {/* Uang masuk & keluar 7 hari terakhir */}
+      <Card className="p-4 lg:col-span-2">
+        <SectionHeader
+          title="Uang masuk & keluar"
+          subtitle="7 hari terakhir"
+          href="/analytics"
+          actionLabel="Detail"
+        />
+        <CashflowMini data={daily} />
+      </Card>
+
+      {/* Pengeluaran per kategori */}
+      <Card className="p-4 lg:col-span-1">
+        <SectionHeader title="Pengeluaran" href="/analytics" actionLabel="Detail" />
+        <CategoryDonut slices={slices} total={expenseTotal} />
+      </Card>
+
+      {/* Budget — cuma muncul kalau ada budget aktif */}
+      {budgetRows.length > 0 ? (
+        <Card className="p-4 lg:col-span-1">
+          <SectionHeader title="Budget" href="/budgets" actionLabel="Kelola" />
+          <div className="space-y-4">
+            {budgetRows.map(({ budget, cat, spent, pct }) => (
+              <div key={budget.id}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-2 text-xs">
+                  <span className="truncate font-medium">{cat?.name ?? "Tanpa kategori"}</span>
+                  <span className="num shrink-0 text-muted">
+                    {formatIDR(spent)}
+                    <span className="text-muted/60"> / {formatIDR(budget.amount)}</span>
+                  </span>
+                </div>
+                <Progress
+                  value={pct * 100}
+                  tone={pct >= 1 ? "expense" : pct >= 0.8 ? "warn" : "brand"}
+                />
+                {pct >= 1 ? (
+                  <p className="mt-1 text-[11px] font-medium text-expense">
+                    Jebol! {formatIDR(spent - budget.amount)} lebih dari limit.
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
+
+      {/* Tradu AI */}
+      <button
+        onClick={() => setTraduOpen(true)}
+        className="group relative overflow-hidden rounded-2xl bg-[linear-gradient(120deg,#f97316,#e8600c)] p-4 text-left text-white shadow-lg shadow-orange-500/25 transition hover:shadow-xl hover:shadow-orange-500/30 lg:col-span-2"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 -right-10 size-32 rounded-full bg-white/15 blur-2xl"
+        />
+        <span className="relative flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 backdrop-blur-sm">
+            <Sparkles className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">Tanya Tradu</span>
+            <span className="block truncate text-xs text-white/85">
+              Roast pengeluaran, tips nabung, tanya apa aja soal duit
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </button>
+
+      {/* Quick actions — scroll horizontal */}
+      <section className="lg:col-span-3">
+        <div className="-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {QUICK.map((a) => (
+            <Link
+              key={a.href}
+              href={a.href}
+              className="flex shrink-0 snap-start items-center gap-2.5 rounded-2xl border border-border bg-surface py-2.5 pr-4 pl-2.5 shadow-(--shadow-card) transition hover:-translate-y-0.5 hover:shadow-(--shadow-hover)"
+            >
+              <span
+                className={cn(
+                  "grid size-8 place-items-center rounded-xl",
+                  a.tone === "brand" && "bg-brand/10 text-brand",
+                  a.tone === "income" && "bg-income/10 text-income",
+                  a.tone === "expense" && "bg-expense/10 text-expense",
+                  a.tone === "warn" && "bg-warn/10 text-warn",
+                  a.tone === "accent" && "bg-accent/10 text-accent",
+                )}
+              >
+                <a.icon className="size-4" />
+              </span>
+              <span className="text-xs font-semibold whitespace-nowrap">{a.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* Tagihan terdekat */}
+      <Card className="p-4 lg:col-span-1">
+        <SectionHeader title="Tagihan" href="/bills" actionLabel="Kelola" />
+        {upcomingBills.length > 0 ? (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+              <span className="text-xs text-muted">Total tagihan terdekat</span>
+              <span className="num text-sm font-semibold">{mask(billsTotal)}</span>
+            </div>
+            {upcomingBills.map((bill) => (
+              <BillItem key={bill.id} bill={bill} mask={mask} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={CalendarClock}
+            title="Belum ada tagihan"
+            description="Tambahkan tagihan lewat halaman Tagihan biar nggak lupa bayar."
+            className="py-6"
+          />
+        )}
+      </Card>
+
+      {/* Transaksi terakhir */}
+      <Card className="overflow-hidden lg:col-span-2">
+        <SectionHeader title="Transaksi Terakhir" href="/transactions" actionLabel="Semua" className="px-4 pt-4" />
+        {recent.length > 0 ? (
+          <motion.ul className="mt-2 divide-y divide-border border-b border-border">
+            {recent.map((tx) => (
+              <RecentTxRow
+                key={tx.id}
+                tx={tx}
+                category={tx.category_id ? (categories ?? []).find((c) => c.id === tx.category_id) : undefined}
+                wallet={(wallets ?? []).find((w) => w.id === tx.wallet_id)}
+                toWallet={tx.to_wallet_id ? (wallets ?? []).find((w) => w.id === tx.to_wallet_id) : undefined}
+                onSelect={setEditing}
+              />
+            ))}
+          </motion.ul>
+        ) : (
+          <div className="px-4 pb-4">
+            <EmptyState
+              icon={ListOrdered}
+              title="Belum ada transaksi"
+              description="Catat pengeluaran atau pemasukan pertama lewat tombol (+) atau halaman Transaksi."
+              action={
+                <Link
+                  href="/transactions"
+                  className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand px-3 text-xs font-medium text-brand-fg shadow-sm shadow-brand/20 transition hover:brightness-110"
+                >
+                  Buka Transaksi
+                </Link>
+              }
+              className="py-8"
+            />
+          </div>
+        )}
+      </Card>
+
+      <TransactionSheet
+        open={Boolean(editing)}
+        editing={editing}
+        onClose={() => setEditing(null)}
+      />
+
+      <TraduChat open={traduOpen} onClose={() => setTraduOpen(false)} />
+    </div>
+  );
+}
+
+/* ------------------------------- section header ------------------------------ */
+
+function SectionHeader({
+  title,
+  subtitle,
+  href,
+  actionLabel,
+  className,
+}: {
+  title: string;
+  subtitle?: string;
+  href: string;
+  actionLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mb-3 flex items-center justify-between gap-3", className)}>
+      <div className="min-w-0">
+        <h3 className="truncate text-sm font-bold tracking-tight">{title}</h3>
+        {subtitle ? <p className="mt-0.5 text-xs text-muted">{subtitle}</p> : null}
+      </div>
+      <Link
+        href={href}
+        className="group flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition hover:underline"
+      >
+        {actionLabel}
+        <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+    </div>
+  );
+}
+
+/* --------------------------------- cash tile -------------------------------- */
+
+function CashTile({
+  label,
+  icon,
+  value,
+  delta: d,
+  goodWhenUp,
+  prevLabel,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  value: string;
+  delta: number | null;
+  goodWhenUp: boolean;
+  prevLabel: string;
+}) {
+  const isUp = (d ?? 0) >= 0;
+  const good = d === null ? null : goodWhenUp ? isUp : !isUp;
+  const DeltaIcon = isUp ? TrendingUp : TrendingDown;
+  return (
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <div className="flex items-center gap-2 text-xs text-muted">
+        {icon}
+        {label}
+        {d !== null ? (
+          <span
+            className={cn(
+              "ml-auto inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+              good ? "bg-income/10 text-income" : "bg-expense/10 text-expense",
+            )}
+          >
+            <DeltaIcon className="size-3" />
+            {Math.abs(d)}%
+          </span>
+        ) : null}
+      </div>
+      <p className="num mt-2 text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
+      <p className="mt-0.5 truncate text-[11px] text-muted">{prevLabel}</p>
+    </div>
+  );
+}
+
+/* --------------------------------- bill item -------------------------------- */
+
+function BillItem({ bill, mask }: { bill: Bill; mask: (n: number) => string }) {
+  const today = toDateKey();
+  const isToday = bill.due_date === today;
+  const isOverdue = bill.due_date < today;
+
+  const isPaid = (() => {
+    if (!bill.last_paid_at) return false;
+    const paidDate = bill.last_paid_at.slice(0, 10);
+    if (paidDate >= bill.due_date) return true;
+
+    const cycleStart = (() => {
+      const d = new Date(bill.due_date);
+      switch (bill.repeat) {
+        case "weekly":
+          d.setDate(d.getDate() - 7);
+          break;
+        case "monthly":
+          d.setMonth(d.getMonth() - 1);
+          break;
+        case "yearly":
+          d.setFullYear(d.getFullYear() - 1);
+          break;
+        default:
+          return null;
+      }
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    })();
+
+    if (!cycleStart) return false;
+    return today < cycleStart || paidDate >= today;
+  })();
+
+  const status = isPaid
+    ? { label: "Lunas", color: "text-income" }
+    : isOverdue
+      ? { label: "Terlambat", color: "text-expense" }
+      : isToday
+        ? { label: "Jatuh tempo hari ini", color: "text-warn" }
+        : { label: "Belum dibayar", color: "text-muted" };
+
+  const [y, m, day] = bill.due_date.split("-").map(Number);
+  const monthShort = new Intl.DateTimeFormat("id-ID", { month: "short" }).format(new Date(y, m - 1, 1));
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3">
+      <div
+        className={cn(
+          "grid size-10 shrink-0 place-items-center rounded-xl text-center",
+          isPaid ? "bg-income/10" : isOverdue ? "bg-expense/10" : isToday ? "bg-warn/10" : "bg-surface-2",
+        )}
+      >
+        <span>
+          <span
+            className={cn(
+              "num block text-sm leading-none font-bold",
+              isPaid ? "text-income" : isOverdue ? "text-expense" : isToday ? "text-warn" : "text-fg",
+            )}
+          >
+            {day}
+          </span>
+          <span className="mt-0.5 block text-[9px] leading-none text-muted uppercase">{monthShort}</span>
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{bill.name}</p>
+        <p className={cn("text-xs", status.color)}>{status.label}</p>
+      </div>
+      <div className="text-right">
+        <p className="num text-sm font-semibold">{mask(bill.amount)}</p>
+        <p className="text-[11px] text-muted">{formatDueDate(bill.due_date)}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ recent tx row ------------------------------ */
+
+function RecentTxRow({
+  tx,
+  category,
+  wallet,
+  toWallet,
+  onSelect,
+}: {
+  tx: Transaction;
+  category?: Category;
+  wallet?: Wallet;
+  toWallet?: Wallet;
+  onSelect?: (tx: Transaction) => void;
+}) {
+  const isTransfer = tx.type === "transfer";
+  const color = isTransfer ? "#64748b" : category?.color ?? "#94a3b8";
+  const title = isTransfer
+    ? `${wallet?.name ?? "?"} → ${toWallet?.name ?? "?"}`
+    : tx.merchant || category?.name || (tx.type === "income" ? "Pemasukan" : "Pengeluaran");
+  const subtitle = isTransfer
+    ? (tx.note ?? "Transfer antar dompet")
+    : [category?.name, wallet?.name].filter(Boolean).join(" · ");
+
+  return (
+    <li>
+      <button
+        onClick={() => onSelect?.(tx)}
+        className="flex w-full items-center gap-3 bg-surface px-4 py-3 text-left transition hover:bg-surface-2 active:scale-[0.995]"
+      >
+        <span
+          className="grid size-10 shrink-0 place-items-center rounded-xl"
+          style={{ background: `${color}1f`, color }}
+        >
+          {isTransfer ? (
+            <ArrowLeftRight className="size-4.5" />
+          ) : (
+            <DynIcon name={category?.icon} className="size-4.5" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{title}</span>
+          <span className="mt-0.5 block truncate text-xs text-muted">{subtitle}</span>
+        </span>
+        <span
+          className={cn(
+            "num shrink-0 text-sm font-semibold",
+            tx.type === "income" ? "text-income" : tx.type === "expense" ? "text-expense" : "text-muted",
+          )}
+        >
+          {tx.type === "income" ? "+" : tx.type === "expense" ? "−" : ""}
+          {formatIDR(tx.amount)}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+function formatDueDate(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(d);
+}

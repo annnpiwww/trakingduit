@@ -15,11 +15,11 @@ import {
   WalletCards,
   AlertCircle,
   Sparkles,
-  MessageSquare,
+  HandCoins,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { allWalletBalances } from "@/lib/repo";
-import { totals } from "@/lib/analytics";
+import { totals, type Totals } from "@/lib/analytics";
 import type { Bill, Transaction } from "@/lib/types";
 import { cn, formatIDR, monthRange, toDateKey, toMonthKey } from "@/lib/utils";
 import {
@@ -39,6 +39,39 @@ import { TraduChat } from "@/components/tradu/tradu-chat";
 
 type MenuTone = "brand" | "income" | "expense" | "warn" | "accent";
 
+type Mood = { emoji: string; label: string; tone: "good" | "warn" | "danger" | "muted" };
+
+const MOOD_TEXT: Record<Mood["tone"], string> = {
+  good: "text-emerald-200",
+  warn: "text-amber-200",
+  danger: "text-orange-200",
+  muted: "text-white/70",
+};
+
+/** Mood duit dihitung dari data asli: sisa bulan ini dibagi pemasukan. */
+function computeMood(t: Totals): Mood {
+  if (t.count === 0) return { emoji: "👀", label: "Belum ada catatan bulan ini", tone: "muted" };
+  if (t.net < 0) return { emoji: "🔥", label: "Waduh, bulan ini minus", tone: "danger" };
+  const sr = t.income > 0 ? t.net / t.income : 1;
+  if (sr >= 0.3) return { emoji: "🤑", label: "Duit aman, gemes", tone: "good" };
+  if (sr >= 0.1) return { emoji: "😌", label: "Aman, tahan dikit dong", tone: "warn" };
+  return { emoji: "🤏", label: "Nyaris abis, sabar", tone: "warn" };
+}
+
+function MoodPill({ mood }: { mood: Mood }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm",
+        MOOD_TEXT[mood.tone],
+      )}
+    >
+      <span className="shrink-0">{mood.emoji}</span>
+      <span className="whitespace-nowrap">{mood.label}</span>
+    </span>
+  );
+}
+
 const QUICK: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -52,7 +85,7 @@ const QUICK: {
   { href: "/bills", icon: CalendarClock, label: "Tagihan", tone: "accent" },
   { href: "/analytics", icon: ChartPie, label: "Analisis", tone: "brand" },
   { href: "/wallets", icon: WalletCards, label: "Dompet", tone: "income" },
-  { href: "/tradu", icon: MessageSquare, label: "Tanya Tradu", tone: "brand" },
+  { href: "/debts", icon: HandCoins, label: "Utang Piutang", tone: "accent" },
 ];
 
 export default function DashboardPage() {
@@ -107,6 +140,7 @@ export default function DashboardPage() {
 
   const t = totals(monthTx ?? []);
   const totalBalance = Object.values(balances ?? {}).reduce((a, b) => a + b, 0);
+  const mood = computeMood(t);
   
   // Only show 3 most recent transactions
   const recent = React.useMemo(
@@ -173,6 +207,8 @@ export default function DashboardPage() {
         value={mask(totalBalance)}
         hidden={hideBalance}
         onToggleHide={toggleHideBalance}
+        watermark="Rp"
+        chip={<MoodPill mood={mood} />}
         sub={
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="flex items-center gap-1">
@@ -209,20 +245,11 @@ export default function DashboardPage() {
 
       {/* Quick menu */}
       <section className="grid grid-cols-4 gap-2.5">
-        {QUICK.map((a) => {
-          if (a.href === "/tradu") {
-            return (
-              <button key={a.href} onClick={() => setTraduOpen(true)} className="block cursor-pointer text-left">
-                <MenuTile icon={a.icon} label={a.label} tone={a.tone} className="h-full" />
-              </button>
-            );
-          }
-          return (
-            <Link key={a.href} href={a.href} className="block">
-              <MenuTile icon={a.icon} label={a.label} tone={a.tone} className="h-full" />
-            </Link>
-          );
-        })}
+        {QUICK.map((a) => (
+          <Link key={a.href} href={a.href} className="block">
+            <MenuTile icon={a.icon} label={a.label} tone={a.tone} className="h-full" />
+          </Link>
+        ))}
       </section>
 
       {/* Bills section - replaced Budget */}

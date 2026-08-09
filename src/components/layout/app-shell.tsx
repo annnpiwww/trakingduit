@@ -12,13 +12,13 @@ import {
   CalendarClock,
   ChartPie,
   CreditCard,
+  HandCoins,
   LayoutGrid,
   ListOrdered,
   LockKeyhole,
   Plus,
   ScanText,
   Settings,
-  Sparkles,
   SunMoon,
   Target,
   WalletCards,
@@ -30,6 +30,7 @@ import { db } from "@/lib/db";
 import { runBillReminderScan } from "@/lib/repo";
 import dynamic from "next/dynamic";
 import { Button, Spinner } from "@/components/ui";
+import { OnboardingTutorial } from "@/components/onboarding/tutorial";
 
 // Lazy-load: hanya dimuat saat benar-benar dibutuhkan (sheet dibuka / layar terkunci).
 const TransactionSheet = dynamic(
@@ -47,6 +48,7 @@ const PRIMARY_NAV = [
 
 const SECONDARY_NAV = [
   { href: "/scan", label: "Scan Nota", icon: ScanText },
+  { href: "/debts", label: "Utang Piutang", icon: HandCoins },
   { href: "/budgets", label: "Budget", icon: CreditCard },
   { href: "/goals", label: "Target", icon: Target },
   { href: "/bills", label: "Tagihan", icon: CalendarClock },
@@ -165,6 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <TransactionSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <OnboardingTutorial />
     </div>
   );
 }

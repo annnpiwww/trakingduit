@@ -1,7 +1,7 @@
 ---
 description: UI polish specialist untuk TrackingDuit. Visual-only: shadow, animasi ringan, skeleton loading, icon refresh, toast/notif. Gak sentuh struktur halaman, logika data, atau flow existing.
 mode: subagent
-model: omni/kimicode
+model: opencode/deepseek-v4-flash-free
 permission:
   edit: allow
   bash: deny

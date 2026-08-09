@@ -1,0 +1,143 @@
+"use client";
+
+import * as React from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Eye, EyeOff, WalletCards } from "lucide-react";
+import { cn, formatIDR } from "@/lib/utils";
+
+export interface MoodChip {
+  emoji: string;
+  label: string;
+  tone: "good" | "warn" | "danger" | "muted";
+}
+
+const MOOD_TEXT: Record<MoodChip["tone"], string> = {
+  good: "text-emerald-200",
+  warn: "text-amber-200",
+  danger: "text-orange-200",
+  muted: "text-white/70",
+};
+
+/** Film-grain noise so the flat gradient doesn't read as a CSS default. */
+const NOISE = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")`;
+
+/** Eased count-up so the balance feels alive without being a gimmick. */
+function useCountUp(target: number, duration = 650) {
+  const [val, setVal] = React.useState(0);
+  const reduced = useReducedMotion();
+  React.useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      setVal(reduced ? target : target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration, reduced]);
+  return val;
+}
+
+/**
+ * Hero kartu saldo. Satu-satunya tempat angka masuk/keluar ada di kartu
+ * ringkasan di bawahnya, jadi hero ini fokus: saldo + mood + jumlah dompet.
+ */
+export function BalanceHero({
+  value,
+  hidden,
+  onToggleHide,
+  walletCount,
+  mood,
+  className,
+}: {
+  value: number;
+  hidden: boolean;
+  onToggleHide: () => void;
+  walletCount: number;
+  mood: MoodChip;
+  className?: string;
+}) {
+  const shown = useCountUp(hidden ? 0 : value);
+  const reduced = useReducedMotion();
+
+  return (
+    <motion.section
+      className={cn(
+        "relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#081c38_0%,#0d3d77_55%,#0a62b8_100%)] text-white shadow-lg shadow-brand/25",
+        className,
+      )}
+      initial={reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      {/* film grain */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-40 mix-blend-overlay"
+        style={{ backgroundImage: NOISE }}
+      />
+      {/* warm accent glow — the brand's orange, used as light not decoration */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-16 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(232,96,12,0.5),transparent_65%)] blur-2xl"
+      />
+      {/* oversized currency watermark */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-2 bottom-0 select-none text-[7.5rem] leading-none font-black text-white/[0.06]"
+      >
+        Rp
+      </span>
+
+      <div className="relative flex min-h-44 flex-col justify-between gap-5 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 text-[13px] font-medium text-white/85">
+            Total saldo
+            {onToggleHide ? (
+              <motion.button
+                type="button"
+                onClick={onToggleHide}
+                aria-label={hidden ? "Lihat nominal" : "Sembunyikan nominal"}
+                className="rounded-md p-0.5 text-white/70 transition hover:text-white"
+                whileTap={{ scale: 0.88 }}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={hidden ? "off" : "on"}
+                    className="inline-flex"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.12 }}
+                  >
+                    {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
+            ) : null}
+          </span>
+          <span
+            className={cn(
+              "inline-flex max-w-[55%] items-center gap-1 truncate rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm",
+              MOOD_TEXT[mood.tone],
+            )}
+          >
+            <span className="shrink-0">{mood.emoji}</span>
+            <span className="truncate">{mood.label}</span>
+          </span>
+        </div>
+
+        <div>
+          <p className="num text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.4rem]">
+            {hidden ? "••••••" : formatIDR(shown)}
+          </p>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-white/70">
+            <WalletCards className="size-3.5" />
+            {walletCount} dompet aktif
+          </p>
+        </div>
+      </div>
+    </motion.section>
+  );
+}

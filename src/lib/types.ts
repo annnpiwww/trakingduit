@@ -84,6 +84,27 @@ export interface Salary extends Syncable {
   amount: number;
 }
 
+export type DebtType = "payable" | "receivable";
+
+/**
+ * Utang piutang. "payable" = kita utang ke orang, "receivable" = orang utang
+ * ke kita (piutang). Lunas saat paid_amount >= amount.
+ */
+export interface Debt extends Syncable {
+  /** Nama orang lawan (yang ngutang / yang diutangi). */
+  person: string;
+  type: DebtType;
+  amount: number;
+  /** Total yang sudah dibayar / sudah diterima. */
+  paid_amount: number;
+  due_date?: ISODate;
+  note?: string;
+  /** Dompet default untuk transaksi otomatis saat bayar/terima. */
+  wallet_id?: ID;
+  /** Bikin transaksi otomatis (bayar utang → expense, terima piutang → income). */
+  auto_tx: 0 | 1;
+}
+
 export interface Bill extends Syncable {
   name: string;
   amount: number;

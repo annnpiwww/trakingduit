@@ -18,6 +18,7 @@ const TABLES = [
   { remote: "saving_goals", local: () => db().goals },
   { remote: "bills", local: () => db().bills },
   { remote: "salaries", local: () => db().salaries },
+  { remote: "debts", local: () => db().debts },
 ] as const;
 
 export interface SupabaseSyncResult {
@@ -68,6 +69,10 @@ const REMOTE_COLUMNS: Record<string, readonly string[]> = {
   ],
   salaries: [
     "id", "user_id", "month", "amount", "created_at", "updated_at", "deleted",
+  ],
+  debts: [
+    "id", "user_id", "person", "type", "amount", "paid_amount", "due_date",
+    "note", "wallet_id", "auto_tx", "created_at", "updated_at", "deleted",
   ],
 };
 

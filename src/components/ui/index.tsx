@@ -515,6 +515,8 @@ export function BalanceCard({
   hidden,
   onToggleHide,
   sub,
+  watermark,
+  chip,
   className,
 }: {
   label: React.ReactNode;
@@ -522,6 +524,10 @@ export function BalanceCard({
   hidden?: boolean;
   onToggleHide?: () => void;
   sub?: React.ReactNode;
+  /** Oversized brand glyph in the background (mis. "Rp"). */
+  watermark?: React.ReactNode;
+  /** Pill kecil di header row (mis. mood duit). */
+  chip?: React.ReactNode;
   className?: string;
 }) {
   return (
@@ -534,31 +540,42 @@ export function BalanceCard({
       animate={getAnimation({ opacity: 1, y: 0 })}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
+      {watermark ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-2 bottom-0 select-none text-[7.5rem] leading-none font-black text-white/[0.06]"
+        >
+          {watermark}
+        </span>
+      ) : null}
       <div className="relative">
-        <div className="flex items-center gap-2 text-[13px] font-medium text-white/85">
-          {label}
-          {onToggleHide ? (
-            <motion.button
-              type="button"
-              onClick={onToggleHide}
-              aria-label={hidden ? "Liat nominal" : "Sembunyiin nominal"}
-              className="text-white/80 transition hover:text-white"
-              whileTap={{ scale: 0.9 }}
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={hidden ? "off" : "on"}
-                  className="inline-flex"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.1 }}
-                >
-                  {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </motion.span>
-              </AnimatePresence>
-            </motion.button>
-          ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-[13px] font-medium text-white/85">
+          <span className="flex min-w-0 items-center gap-2">
+            {label}
+            {onToggleHide ? (
+              <motion.button
+                type="button"
+                onClick={onToggleHide}
+                aria-label={hidden ? "Liat nominal" : "Sembunyiin nominal"}
+                className="text-white/80 transition hover:text-white"
+                whileTap={{ scale: 0.9 }}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={hidden ? "off" : "on"}
+                    className="inline-flex"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    {hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
+            ) : null}
+          </span>
+          {chip ? <span className="min-w-0 shrink-0">{chip}</span> : null}
         </div>
         <p className="num mt-1 text-4xl font-bold tracking-tight sm:text-5xl">{value}</p>
         {sub ? <div className="mt-2 text-xs text-white/80">{sub}</div> : null}

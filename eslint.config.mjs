@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import reactHooks from "eslint-plugin-react-hooks";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -15,6 +16,9 @@ const eslintConfig = defineConfig([
     "public/sw.js",
   ]),
   {
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
       // Local data lives in IndexedDB, which can only be read asynchronously —
       // loading it means setState from an effect. Kept as a warning so genuinely

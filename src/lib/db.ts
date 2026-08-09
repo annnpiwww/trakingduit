@@ -6,6 +6,7 @@ import type {
   Bill,
   Budget,
   Category,
+  Debt,
   Receipt,
   SavingGoal,
   Salary,
@@ -29,6 +30,7 @@ export class TrackingDuitDB extends Dexie {
   budgets!: EntityTable<Budget, "id">;
   goals!: EntityTable<SavingGoal, "id">;
   bills!: EntityTable<Bill, "id">;
+  debts!: EntityTable<Debt, "id">;
   salaries!: EntityTable<Salary, "id">;
   receipts!: EntityTable<Receipt, "id">;
   notifications!: EntityTable<AppNotification, "id">;
@@ -187,6 +189,11 @@ export class TrackingDuitDB extends Dexie {
         });
       }
     });
+
+    // Version 7: utang piutang table
+    this.version(7).stores({
+      debts: "id, person, type, due_date, created_at, updated_at, deleted",
+    });
   }
 }
 
@@ -255,6 +262,7 @@ export async function resetAll(): Promise<void> {
       d.budgets,
       d.goals,
       d.bills,
+      d.debts,
       d.receipts,
       d.notifications,
       d.syncLogs,
@@ -269,6 +277,7 @@ export async function resetAll(): Promise<void> {
         d.budgets.clear(),
         d.goals.clear(),
         d.bills.clear(),
+        d.debts.clear(),
         d.receipts.clear(),
         d.notifications.clear(),
         d.syncLogs.clear(),

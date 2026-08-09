@@ -6,6 +6,7 @@ import type {
   Bill,
   Budget,
   Category,
+  Debt,
   ID,
   Receipt,
   SavingGoal,
@@ -339,6 +340,54 @@ export function nextDueDate(bill: Bill): string | undefined {
       return undefined;
   }
   return toDateKey(d);
+}
+
+/* ------------------------------- utang piutang ------------------------------ */
+
+export async function createDebt(input: NewRow<Debt>) {
+  const row = stamp(input) as Debt;
+  await db().debts.add(row);
+  triggerMutationSync();
+  return row;
+}
+
+export async function updateDebt(id: ID, patch: Partial<Debt>) {
+  await db().debts.update(id, { ...patch, updated_at: nowISO() });
+  triggerMutationSync();
+}
+
+export async function deleteDebt(id: ID) {
+  await db().debts.update(id, { deleted: 1, updated_at: nowISO() });
+  triggerMutationSync();
+}
+
+/**
+ * Bayar utang (payable) / terima piutang (receivable). Kalau `auto_tx` aktif
+ * sekalian bikin transaksi: bayar → expense, terima → income.
+ */
+export async function payDebt(debtId: ID, amount: number, walletId?: ID) {
+  const debt = await db().debts.get(debtId);
+  if (!debt) return;
+
+  const remaining = debt.amount - debt.paid_amount;
+  const paid = Math.min(Math.max(0, amount), remaining);
+  if (paid <= 0) return;
+
+  if (debt.auto_tx && (walletId || debt.wallet_id)) {
+    const isPayable = debt.type === "payable";
+    await createTransaction({
+      type: isPayable ? "expense" : "income",
+      amount: paid,
+      wallet_id: walletId ?? debt.wallet_id!,
+      date: toDateKey(),
+      note: isPayable ? `Bayar utang: ${debt.person}` : `Terima piutang: ${debt.person}`,
+      merchant: debt.person,
+      tags: ["utang-piutang"],
+      source: "manual",
+    });
+  }
+
+  await updateDebt(debtId, { paid_amount: debt.paid_amount + paid });
 }
 
 /* --------------------------------- receipts --------------------------------- */
