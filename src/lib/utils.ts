@@ -146,6 +146,52 @@ export function sum(items: number[]): number {
   return items.reduce((a, b) => a + b, 0);
 }
 
+/**
+ * Parse a /v1/chat/completions response body into the model's text reply.
+ * Tries plain JSON first (choices[0].message.content / content); if that
+ * yields nothing, falls back to SSE-stream lines (`data: {"choices":...}`),
+ * concatenating delta.content — so it never fails if the router streams
+ * despite `stream: false`.
+ */
+export async function parseChatCompletionsResponse(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+
+  const extract = (obj: any): string => {
+    const choice = obj?.choices?.[0];
+    const c = choice?.message?.content ?? choice?.delta?.content;
+    const content =
+      typeof c === "string"
+        ? c
+        : Array.isArray(c)
+          ? c.map((p: any) => (typeof p === "string" ? p : p?.text ?? "")).join("")
+          : choice?.text ?? obj?.content ?? "";
+    return typeof content === "string" ? content : "";
+  };
+
+  try {
+    const fromJson = extract(JSON.parse(text));
+    if (fromJson.trim()) return fromJson;
+  } catch {
+    // Bukan JSON valid — lanjut ke SSE di bawah.
+  }
+
+  // SSE stream format: `data: {"choices":[...]}` per baris.
+  const parts: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const delta = extract(JSON.parse(payload));
+      if (delta) parts.push(delta);
+    } catch {
+      // Skip baris SSE yang rusak.
+    }
+  }
+  return parts.join("");
+}
+
 export function downloadFile(name: string, content: string, mime = "text/plain") {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);

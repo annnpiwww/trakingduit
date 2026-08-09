@@ -100,10 +100,13 @@ function structuredToParsed(s: {
 /** Server-side AI OCR (ocrgambar-copy via /api/ocr) — structured extraction. */
 async function tryAiOcr(dataUrl: string): Promise<OcrResult | null> {
   try {
+    // Downscale raw camera photos (10MB+ base64) → ~200KB JPEG so /api/ocr
+    // never hits Vercel's 413 Payload Too Large and the AI model stays fast.
+    const compressed = await compressReceiptImage(dataUrl, 1000, 0.75);
     const res = await fetch("/api/ocr", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: dataUrl }),
+      body: JSON.stringify({ image: compressed }),
       signal: AbortSignal.timeout(25_000),
     });
     if (!res.ok) return null;

@@ -1,3 +1,5 @@
+import { parseChatCompletionsResponse } from "@/lib/utils";
+
 export interface AiOcrResponse {
   merchant?: string;
   address?: string;
@@ -99,10 +101,7 @@ export async function ocrViaOpenAI(
       throw new Error(`OCR API error ${res.status}: ${body.slice(0, 200)}`);
     }
 
-    const data = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = data.choices?.[0]?.message?.content ?? "";
+    const text = await parseChatCompletionsResponse(res);
     if (!text.trim()) throw new Error("OCR API kosong (tidak ada content)");
     return text;
   } finally {

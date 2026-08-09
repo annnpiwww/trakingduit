@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured, supabaseFromRequest } from "@/lib/supabase";
+import { parseChatCompletionsResponse } from "@/lib/utils";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -128,14 +129,7 @@ async function chatViaOpenAI(apiMessages: ApiMessage[]): Promise<string> {
     throw new Error(`API Error (${res.status}): ${errorText.slice(0, 500)}`);
   }
 
-  const data = await res.json().catch(() => null);
-  const content = data?.choices?.[0]?.message?.content;
-  const reply =
-    typeof content === "string"
-      ? content
-      : Array.isArray(content)
-        ? content.map((p: any) => (typeof p === "string" ? p : p?.text ?? "")).join("")
-        : "";
+  const reply = await parseChatCompletionsResponse(res);
   if (!reply?.trim()) throw new Error("Empty response from AI");
   return reply;
 }
