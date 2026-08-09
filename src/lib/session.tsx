@@ -119,7 +119,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
       const uid = data.user?.id ?? newId();
       const existing = await db().profile.get(PROFILE_ID);
-      if (mode === "login" || (existing?.supabase_user_id && existing.supabase_user_id !== uid)) {
+      // JANGAN wipe data lokal saat login. Re-login ke akun yang sama (sesi expired)
+      // harusnya merge via sync, bukan reset — kalau reset, data yang belum sempat
+      // ter-push (mis. kolom baru yang belum ada di remote) bakal hilang selamanya.
+      // Wipe hanya boleh saat GANTI akun cloud (uid berbeda).
+      if (existing?.supabase_user_id && existing.supabase_user_id !== uid) {
         await resetAll();
       }
       const row: UserProfile = {
@@ -173,17 +177,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     const sb = supabaseBrowser();
+    let synced = true;
     if (sb) {
       try {
         // Sync one last time before signing out and clearing local DB
         await syncSupabase();
       } catch (e) {
         console.error("Failed to sync before signing out:", e);
+        // Jangan wipe kalau sync gagal (mis. offline) — data lokal tetap ada,
+        // biar nggak hilang sebelum sempat ke cloud.
+        synced = false;
       }
       await sb.auth.signOut();
     }
     sessionStorage.removeItem(UNLOCK_KEY);
-    await resetAll();
+    if (synced) await resetAll();
     setProfile(null);
     setStatus("signed-out");
   }, []);

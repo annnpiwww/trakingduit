@@ -8,7 +8,9 @@ import { InstallPrompt } from "@/components/install/install-prompt";
 import { cn } from "@/lib/utils";
 import { usePWAInstall } from "@/lib/use-pwa-install";
 
-const ONBOARD_KEY = "td.onboarded.v1";
+// Bump versi key tiap tutorial dirombak signifikan, biar yang udah pernah
+// lihat versi lama tetap dapat tutorial baru sekali lagi.
+const ONBOARD_KEY = "td.onboarded.v2";
 
 type TourStep = {
   /** querySelector target yang disorot; undefined = kartu tengah (tanpa spotlight). */
