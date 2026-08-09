@@ -403,7 +403,7 @@ Semua critical vulnerabilities sudah di-fix. Aplikasi sekarang aman untuk produc
 ## 📞 Contact
 
 Questions tentang security audit ini? Reach out:
-- GitHub Issues: https://github.com/annnpii/trakingduit/issues
+- GitHub Issues: https://github.com/annnpiwww/trakingduit/issues
 - Email: [maintainer email]
 
 ---

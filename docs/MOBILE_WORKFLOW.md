@@ -16,7 +16,7 @@ git config --global credential.helper store
 
 # Clone repo
 cd ~/storage/shared
-git clone https://github.com/annnpii/trakingduit.git
+git clone https://github.com/annnpiwww/trakingduit.git
 cd trakingduit
 
 # Install dependencies
@@ -167,7 +167,7 @@ emacs src/app/page.tsx
 git checkout -b mobile-edit
 git push origin mobile-edit
 
-# Edit di browser: https://github.dev/annnpii/trakingduit
+# Edit di browser: https://github.dev/annnpiwww/trakingduit
 # Atau: github.com → tekan tombol "." (titik)
 
 # Merge via PR setelah selesai
@@ -181,7 +181,7 @@ git push origin mobile-edit
 
 ```bash
 # Pakai HTTPS instead of SSH
-git remote set-url origin https://github.com/annnpii/trakingduit.git
+git remote set-url origin https://github.com/annnpiwww/trakingduit.git
 ```
 
 ### Error: Authentication failed
@@ -317,7 +317,7 @@ git show commit-hash:path/to/file
 - **Git Basics:** https://git-scm.com/book/en/v2
 - **GitHub Mobile:** https://github.com/mobile (untuk review PR)
 - **Vercel Dashboard:** https://vercel.com/dashboard
-- **Project Repo:** https://github.com/annnpii/trakingduit
+- **Project Repo:** https://github.com/annnpiwww/trakingduit
 
 ---
 
@@ -333,7 +333,7 @@ git commit --help
 ./scripts/sync-now.sh --help
 ```
 
-**Issues:** https://github.com/annnpii/trakingduit/issues
+**Issues:** https://github.com/annnpiwww/trakingduit/issues
 
 ---
 
