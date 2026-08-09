@@ -142,8 +142,12 @@ export default function SettingsPage() {
   }
 
   async function removePin() {
-    await updateProfile({ pin_hash: undefined });
-    toast("PIN dihapus", "success");
+    try {
+      await updateProfile({ pin_hash: undefined });
+      toast("PIN dihapus", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Gagal menghapus PIN", "error");
+    }
   }
 
   async function runSheetSync() {
@@ -390,9 +394,13 @@ export default function SettingsPage() {
                   variant="danger"
                   size="sm"
                   onClick={async () => {
-                    await resetAll();
-                    setConfirmReset(false);
-                    toast("Data direset", "success");
+                    try {
+                      await resetAll();
+                      setConfirmReset(false);
+                      toast("Data direset", "success");
+                    } catch (err) {
+                      toast(err instanceof Error ? err.message : "Gagal reset data", "error");
+                    }
                   }}
                 >
                   Ya, hapus semua

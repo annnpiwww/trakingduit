@@ -215,42 +215,52 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
     }
 
     /* Sync profile (nama, warna) dua arah. Tabel `profiles` id-nya = auth uid
-       (beda dari tabel lain yang id-nya uuid acak), jadi ditangani khusus,
-       bukan lewat TABLES generic. Avatar_url nggak di-sync — kolomnya belum
-       ada di remote profiles. */
-    const localProfile = await db().profile.get("me");
-    if (localProfile?.supabase_user_id === userId) {
-      const { data: cloudProfile } = await sb
-        .from("profiles")
-        .select("id, name, avatar_color, email, updated_at")
-        .eq("id", userId)
-        .maybeSingle();
-      const localAt = localProfile.updated_at; // undefined = belum ada edit lokal
-      const localMs = localAt ? Date.parse(localAt) : 0;
-      const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
-      if (localAt && localMs > cloudMs) {
-        // User pernah edit nama di device ini & lebih baru → push ke cloud.
-        const { error } = await sb.from("profiles").upsert(
-          {
-            id: userId,
-            name: localProfile.name,
-            avatar_color: localProfile.avatar_color,
-            email: localProfile.email ?? cloudProfile?.email,
-            updated_at: localAt,
-          },
-          { onConflict: "id" },
-        );
-        if (error) throw new Error(`profiles: ${error.message}`);
-        pushed++;
-      } else if (cloudProfile && (!localAt || cloudMs > localMs)) {
-        // Device baru / cloud lebih baru → ikutin nama dari cloud.
-        await db().profile.update("me", {
-          name: cloudProfile.name,
-          avatar_color: cloudProfile.avatar_color,
-          updated_at: cloudProfile.updated_at,
-        });
-        pulled++;
+       (beda dari tabel lain yang id-nya uuid acak), jadi ditangani khusus,        bukan lewat TABLES generic. Avatar_url ikut di-sync (kolom ada di
+        remote profiles sejak migration add_avatar_url_column.sql). */
+    /* Profile sync sengaja di-try/catch sendiri: kalau gagal (mis. kolom
+       avatar_url belum ke-migrasi di remote), jangan bunuh sync tabel data
+       — cukup lewati profil & lanjut. */
+    try {
+      const localProfile = await db().profile.get("me");
+      if (localProfile?.supabase_user_id === userId) {
+        const { data: cloudProfile } = await sb
+          .from("profiles")
+          .select("id, name, avatar_color, email, avatar_url, updated_at")
+          .eq("id", userId)
+          .maybeSingle();
+        const localAt = localProfile.updated_at; // undefined = belum ada edit lokal
+        const localMs = localAt ? Date.parse(localAt) : 0;
+        const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
+        if (localAt && localMs > cloudMs) {
+          // User pernah edit nama di device ini & lebih baru → push ke cloud.
+          // Jangan timpa avatar cloud dengan null kalau lokal nggak punya.
+          const { error } = await sb.from("profiles").upsert(
+            {
+              id: userId,
+              name: localProfile.name,
+              avatar_color: localProfile.avatar_color,
+              email: localProfile.email ?? cloudProfile?.email,
+              avatar_url: localProfile.avatar_url ?? cloudProfile?.avatar_url ?? null,
+              updated_at: localAt,
+            },
+            { onConflict: "id" },
+          );
+          if (error) throw new Error(`profiles: ${error.message}`);
+          pushed++;
+        } else if (cloudProfile && (!localAt || cloudMs > localMs)) {
+          // Device baru / cloud lebih baru → ikutin nama dari cloud.
+          await db().profile.update("me", {
+            name: cloudProfile.name,
+            avatar_color: cloudProfile.avatar_color,
+            avatar_url: cloudProfile.avatar_url ?? undefined,
+            updated_at: cloudProfile.updated_at,
+          });
+          pulled++;
+        }
       }
+    } catch (profileErr) {
+      // Kolom belum ada / koneksi putus → profil skip, tabel data tetap sync.
+      console.error("Sync profil dilewati:", profileErr);
     }
 
     await setSetting(LAST_SUPABASE_SYNC, startedAt);

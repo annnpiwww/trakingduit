@@ -2,9 +2,15 @@
 
 Paste isi blok di bawah ke session baru untuk melanjutkan tanpa kehilangan konteks.
 
+> **UPDATE 2026-08-10 (v1.14.0):** project sekarang di `/home/annnpii/orca/trakingduit`,
+> sudah repo git (branch `main`, author `annnpiwww <anpikeke@gmail.com>`, remote
+> `github.com/annnpiwww/trakingduit.git`), live di https://trakingduit.vercel.app
+> via Vercel CLI. Semua item §1–§3c lama sudah tuntas; ringkasan release v1.11.0–v1.14.0
+> ada di §4b. Baca juga `docs/superpowers/plans/*` kalau mau konteks desain.
+
 ---
 
-Lanjutkan pengerjaan webapp **TrackingDuit** di `/home/annnpii/Product development annpii/trakingduit`.
+Lanjutkan pengerjaan webapp **TrackingDuit** di `/home/annnpii/orca/trakingduit`.
 Acuan produk: `docs/PRD.md` (salinan `trackingduit.md`). Dokumentasi lengkap arsitektur ada di `README.md` — baca itu dulu sebelum mulai.
 
 ## Status: MVP + V2 sudah jadi dan terverifikasi
@@ -141,6 +147,34 @@ milik akun lama ikut ter-push ke akun baru pada sinkron pertama. Workaround
 sementara sudah ditulis di `docs/SUPABASE-SETUP.md` (Reset semua data sebelum ganti akun).
 Perbaikan sebenarnya: simpan `supabase_user_id` pemilik data dan bersihkan tabel
 saat user berbeda login.
+
+## 4b. Ringkasan release v1.11.0 – v1.14.0 (2026-08-09/10)
+
+Semua sudah commit (branch `main`) + deploy Vercel production. Working tree bersih.
+
+- **v1.11.0** — fitur Utang Piutang (`/debts`: form, bayar/terima auto-transaksi, sync +
+migration `add_debts_table.sql`), tutorial onboarding, shortcut dashboard "Tanya Tradu" → "Utang Piutang".
+- **v1.12.0** — tutorial install PWA (step akhir onboarding + item "Install Aplikasi" di Menu;
+`usePWAInstall` singleton store + `InstallPrompt`/`InstallSheet`), tutorial onboarding dirombak
+jadi **guided tour spotlight** (panah orange + tooltip per elemen, key localStorage `td.onboarded.v2`),
+4 fix `/transactions` (sorting sebelum pagination, font stat mobile, month-switcher compact, hapus net + per-hari).
+- **v1.13.0** — fix data-loss kritis di `session.tsx`: TIDAK `resetAll()` lagi saat re-login
+akun cloud yang sama (cuma saat ganti akun, `supabase_user_id !== uid`); `signOut` cuma wipe
+kalau sync terakhir sukses. Migration `fix_sync_apply_all.sql` (kolom installment bills + tabel
+debts) sudah di-apply manual user ke Supabase remote.
+- **v1.14.0** — sync profil dua arah (nama/warna avatar antar device, last-write-wins pakai
+`updated_at`, `Date.parse()`). `avatar_url` TIDAK di-sync — kolom belum ada di remote `profiles`.
+
+### 4c. Sisa pekerjaan / pending (belum diputus user)
+
+1. User belum konfirmasi nama profil nyamain antar device setelah v1.14.0 (edit nama sekali di salah satu device).
+2. **avatar_url sync** — perlu tambah kolom di remote `profiles` (SQL editor) + kode push/pull.
+3. **signOut di mode lokal-only** masih wipe semua data tanpa backup (bisa diubah jadi tidak wipe).
+4. Supabase Auth **Site URL / Redirect URLs** mungkin masih `http://localhost:3000` — cek dashboard
+   Auth → URL Configuration kalau link konfirmasi email bermasalah.
+
+Catatan infra: CLI `supabase db push` di mesin ini kena login-role 403 (akun CLI bukan pemilik
+project `oeayigvhngzfimvbmyxg`) — jangan andalkan; untuk migration minta user paste SQL di SQL editor.
 
 ## Gotcha yang sudah kena, jangan diulang
 

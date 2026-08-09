@@ -16,7 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input, Sheet } from "@/components/ui";
+import { Button, Card, Field, Input, Sheet, useToast } from "@/components/ui";
 import { InstallSheet } from "@/components/install/install-sheet";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ export default function MenuPage() {
 }
 
 function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const toast = useToast();
   const { profile, updateProfile } = useSession();
   const [name, setName] = React.useState("");
   const [color, setColor] = React.useState("#0f9d76");
@@ -133,28 +134,52 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran gambar maksimal 2MB!");
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran gambar maksimal 5MB!");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setAvatarUrl(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    // Kompres ke max 512px JPEG supaya data URL-nya kecil: lebih ringan buat
+    // IndexedDB, dan nggak melewati batas payload PostgREST saat sync ke cloud.
+    // createImageBitmap + imageOrientation buat hormatin EXIF (foto HP), dan
+    // resizeWidth dulu biar nggak decode gambar raksasa penuh (bisa crash Safari).
+    const bitmapPromise = createImageBitmap(file, {
+      imageOrientation: "from-image",
+      resizeWidth: 512,
+      resizeHeight: 512,
+      resizeQuality: "high",
+    }).catch(() => null);
+    void bitmapPromise.then((bitmap) => {
+      if (!bitmap) return;
+      const MAX = 512;
+      const scale = Math.min(1, MAX / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      // JPEG nggak punya alpha — isi putih dulu biar PNG transparan nggak jadi hitam.
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      setAvatarUrl(canvas.toDataURL("image/jpeg", 0.85));
+      bitmap.close();
+    });
   };
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    await updateProfile({
-      name: name.trim(),
-      avatar_color: color,
-      avatar_url: avatarUrl || undefined,
-    });
-    onClose();
+    try {
+      await updateProfile({
+        name: name.trim(),
+        avatar_color: color,
+        avatar_url: avatarUrl || undefined,
+      });
+      toast("Profil disimpan", "success");
+      onClose();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Gagal menyimpan profil", "error");
+    }
   };
 
   const colors = ["#0f9d76", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#10b981", "#6b7280"];

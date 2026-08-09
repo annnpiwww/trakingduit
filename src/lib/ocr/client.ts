@@ -25,6 +25,30 @@ export async function prepareImage(file: File, maxSide = 1200, quality = 0.75): 
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+/**
+ * Compress a processed receipt down before storing in IndexedDB — the OCR
+ * copy (maxSide 1200) is only needed while reading; a smaller JPEG is plenty
+ * for the thumbnail/full preview and avoids storage bloat.
+ */
+export async function compressReceiptImage(dataUrl: string, maxSide = 900, quality = 0.72): Promise<string> {
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Gagal memuat gambar"));
+    el.src = dataUrl;
+  });
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas tidak tersedia");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 /** Boost contrast — receipts are low-contrast thermal prints. */
 export function preprocess(dataUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {

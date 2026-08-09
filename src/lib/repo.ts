@@ -31,6 +31,24 @@ export function triggerMutationSync() {
   }
 }
 
+/* ------------------------- mutation error reporting ------------------------ */
+
+type MutationErrorHandler = (err: unknown) => void;
+let onMutationError: MutationErrorHandler | null = null;
+
+/** Register a global handler (e.g. toast) for failed Dexie writes. */
+export function registerMutationErrorHandler(handler: MutationErrorHandler) {
+  onMutationError = handler;
+}
+
+/** Log + notify the registered handler, then rethrow so callers can't proceed
+ *  as if the write succeeded (no false-success toasts or closed dialogs). */
+function reportMutationError(err: unknown): never {
+  console.error("[repo] mutation failed:", err);
+  onMutationError?.(err);
+  throw err;
+}
+
 function stamp<T extends object>(input: T) {
   return {
     ...input,
@@ -44,27 +62,39 @@ function stamp<T extends object>(input: T) {
 /* ---------------------------------- wallets --------------------------------- */
 
 export async function createWallet(input: NewRow<Wallet>) {
-  const row = stamp(input) as Wallet;
-  await db().wallets.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Wallet;
+    await db().wallets.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateWallet(id: ID, patch: Partial<Wallet>) {
-  await db().wallets.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().wallets.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteWallet(id: ID) {
-  const txCount = await db().transactions.where("wallet_id").equals(id).count();
-  if (txCount > 0) {
-    // keep history intact — archive instead of destroying linked transactions
-    await updateWallet(id, { archived: 1 });
-    return { archived: true, txCount };
+  try {
+    const txCount = await db().transactions.where("wallet_id").equals(id).count();
+    if (txCount > 0) {
+      // keep history intact — archive instead of destroying linked transactions
+      await updateWallet(id, { archived: 1 });
+      return { archived: true, txCount };
+    }
+    await db().wallets.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+    return { archived: false, txCount };
+  } catch (err) {
+    reportMutationError(err);
   }
-  await db().wallets.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
-  return { archived: false, txCount };
 }
 
 /** initial_balance + income − expense + transfers in − transfers out. */
@@ -111,20 +141,32 @@ export async function allWalletBalances(): Promise<Record<ID, number>> {
 /* -------------------------------- categories -------------------------------- */
 
 export async function createCategory(input: NewRow<Category>) {
-  const row = stamp(input) as Category;
-  await db().categories.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Category;
+    await db().categories.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateCategory(id: ID, patch: Partial<Category>) {
-  await db().categories.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().categories.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteCategory(id: ID) {
-  await db().categories.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().categories.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /** Best-effort category match from free text (merchant / note). */
@@ -152,21 +194,33 @@ export async function guessCategory(
 /* ------------------------------- transactions ------------------------------- */
 
 export async function createTransaction(input: NewRow<Transaction>) {
-  const row = stamp(input) as Transaction;
-  await db().transactions.add(row);
-  await checkBudgetAlerts(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Transaction;
+    await db().transactions.add(row);
+    await checkBudgetAlerts(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateTransaction(id: ID, patch: Partial<Transaction>) {
-  await db().transactions.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().transactions.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteTransaction(id: ID) {
-  await db().transactions.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().transactions.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function transactionsInRange(from: string, to: string) {
@@ -180,20 +234,32 @@ export async function transactionsInRange(from: string, to: string) {
 /* ---------------------------------- budgets --------------------------------- */
 
 export async function createBudget(input: NewRow<Budget>) {
-  const row = stamp(input) as Budget;
-  await db().budgets.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Budget;
+    await db().budgets.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateBudget(id: ID, patch: Partial<Budget>) {
-  await db().budgets.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().budgets.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteBudget(id: ID) {
-  await db().budgets.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().budgets.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /** Fires an in-app notification when a budget crosses 80% / 100%. */
@@ -231,97 +297,129 @@ async function checkBudgetAlerts(tx: Transaction) {
 /* ----------------------------------- goals ---------------------------------- */
 
 export async function createGoal(input: NewRow<SavingGoal>) {
-  const row = stamp(input) as SavingGoal;
-  await db().goals.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as SavingGoal;
+    await db().goals.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateGoal(id: ID, patch: Partial<SavingGoal>) {
-  await db().goals.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().goals.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteGoal(id: ID) {
-  await db().goals.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().goals.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function contributeToGoal(goalId: ID, amount: number) {
-  const goal = await db().goals.get(goalId);
-  if (!goal) return;
-  await updateGoal(goalId, { saved_amount: Math.max(0, goal.saved_amount + amount) });
-  if (goal.saved_amount + amount >= goal.target_amount) {
-    await pushNotification({
-      title: `Target "${goal.name}" tercapai`,
-      body: "Selamat, target tabungan sudah penuh.",
-      kind: "goal",
-      ref_id: goal.id,
-    });
+  try {
+    const goal = await db().goals.get(goalId);
+    if (!goal) return;
+    await updateGoal(goalId, { saved_amount: Math.max(0, goal.saved_amount + amount) });
+    if (goal.saved_amount + amount >= goal.target_amount) {
+      await pushNotification({
+        title: `Target "${goal.name}" tercapai`,
+        body: "Selamat, target tabungan sudah penuh.",
+        kind: "goal",
+        ref_id: goal.id,
+      });
+    }
+  } catch (err) {
+    reportMutationError(err);
   }
 }
 
 /* ----------------------------------- bills ---------------------------------- */
 
 export async function createBill(input: NewRow<Bill>) {
-  const row = stamp(input) as Bill;
-  await db().bills.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Bill;
+    await db().bills.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateBill(id: ID, patch: Partial<Bill>) {
-  await db().bills.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().bills.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteBill(id: ID) {
-  await db().bills.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().bills.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /** Mark paid → optionally records the expense and rolls the due date forward. */
 export async function payBill(billId: ID, walletId?: ID) {
-  const bill = await db().bills.get(billId);
-  if (!bill) return;
+  try {
+    const bill = await db().bills.get(billId);
+    if (!bill) return;
 
-  const actualAmount = bill.is_installment ? (bill.installment_amount_per_period ?? bill.amount) : bill.amount;
+    const actualAmount = bill.is_installment ? (bill.installment_amount_per_period ?? bill.amount) : bill.amount;
 
-  if (bill.auto_create_tx && (walletId || bill.wallet_id)) {
-    await createTransaction({
-      type: "expense",
-      amount: actualAmount,
-      wallet_id: (walletId ?? bill.wallet_id)!,
-      category_id: bill.category_id,
-      date: toDateKey(),
-      note: bill.is_installment 
-        ? `Bayar cicilan: ${bill.name} (Ke-${(bill.installment_paid ?? 0) + 1} dari ${bill.installment_total ?? 1})`
-        : `Bayar tagihan: ${bill.name}`,
-      merchant: bill.name,
-      tags: ["tagihan", bill.is_installment ? "cicilan" : ""].filter(Boolean),
-      source: "manual",
-    });
+    if (bill.auto_create_tx && (walletId || bill.wallet_id)) {
+      await createTransaction({
+        type: "expense",
+        amount: actualAmount,
+        wallet_id: (walletId ?? bill.wallet_id)!,
+        category_id: bill.category_id,
+        date: toDateKey(),
+        note: bill.is_installment 
+          ? `Bayar cicilan: ${bill.name} (Ke-${(bill.installment_paid ?? 0) + 1} dari ${bill.installment_total ?? 1})`
+          : `Bayar tagihan: ${bill.name}`,
+        merchant: bill.name,
+        tags: ["tagihan", bill.is_installment ? "cicilan" : ""].filter(Boolean),
+        source: "manual",
+      });
+    }
+
+    const next = nextDueDate(bill);
+    
+    if (bill.is_installment) {
+      const paidTimes = (bill.installment_paid ?? 0) + 1;
+      const isCompleted = paidTimes >= (bill.installment_total ?? 1);
+      await updateBill(billId, {
+        last_paid_at: nowISO(),
+        due_date: isCompleted ? bill.due_date : (next ?? bill.due_date),
+        installment_paid: paidTimes,
+        archived: isCompleted ? 1 : 0,
+      });
+    } else {
+      await updateBill(billId, {
+        last_paid_at: nowISO(),
+        due_date: next ?? bill.due_date,
+        archived: next ? 0 : 1,
+      });
+    }
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
   }
-
-  const next = nextDueDate(bill);
-  
-  if (bill.is_installment) {
-    const paidTimes = (bill.installment_paid ?? 0) + 1;
-    const isCompleted = paidTimes >= (bill.installment_total ?? 1);
-    await updateBill(billId, {
-      last_paid_at: nowISO(),
-      due_date: isCompleted ? bill.due_date : (next ?? bill.due_date),
-      installment_paid: paidTimes,
-      archived: isCompleted ? 1 : 0,
-    });
-  } else {
-    await updateBill(billId, {
-      last_paid_at: nowISO(),
-      due_date: next ?? bill.due_date,
-      archived: next ? 0 : 1,
-    });
-  }
-  triggerMutationSync();
 }
 
 export function nextDueDate(bill: Bill): string | undefined {
@@ -345,20 +443,32 @@ export function nextDueDate(bill: Bill): string | undefined {
 /* ------------------------------- utang piutang ------------------------------ */
 
 export async function createDebt(input: NewRow<Debt>) {
-  const row = stamp(input) as Debt;
-  await db().debts.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Debt;
+    await db().debts.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateDebt(id: ID, patch: Partial<Debt>) {
-  await db().debts.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().debts.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteDebt(id: ID) {
-  await db().debts.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().debts.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /**
@@ -366,47 +476,63 @@ export async function deleteDebt(id: ID) {
  * sekalian bikin transaksi: bayar → expense, terima → income.
  */
 export async function payDebt(debtId: ID, amount: number, walletId?: ID) {
-  const debt = await db().debts.get(debtId);
-  if (!debt) return;
+  try {
+    const debt = await db().debts.get(debtId);
+    if (!debt) return;
 
-  const remaining = debt.amount - debt.paid_amount;
-  const paid = Math.min(Math.max(0, amount), remaining);
-  if (paid <= 0) return;
+    const remaining = debt.amount - debt.paid_amount;
+    const paid = Math.min(Math.max(0, amount), remaining);
+    if (paid <= 0) return;
 
-  if (debt.auto_tx && (walletId || debt.wallet_id)) {
-    const isPayable = debt.type === "payable";
-    await createTransaction({
-      type: isPayable ? "expense" : "income",
-      amount: paid,
-      wallet_id: walletId ?? debt.wallet_id!,
-      date: toDateKey(),
-      note: isPayable ? `Bayar utang: ${debt.person}` : `Terima piutang: ${debt.person}`,
-      merchant: debt.person,
-      tags: ["utang-piutang"],
-      source: "manual",
-    });
+    if (debt.auto_tx && (walletId || debt.wallet_id)) {
+      const isPayable = debt.type === "payable";
+      await createTransaction({
+        type: isPayable ? "expense" : "income",
+        amount: paid,
+        wallet_id: walletId ?? debt.wallet_id!,
+        date: toDateKey(),
+        note: isPayable ? `Bayar utang: ${debt.person}` : `Terima piutang: ${debt.person}`,
+        merchant: debt.person,
+        tags: ["utang-piutang"],
+        source: "manual",
+      });
+    }
+
+    await updateDebt(debtId, { paid_amount: debt.paid_amount + paid });
+  } catch (err) {
+    reportMutationError(err);
   }
-
-  await updateDebt(debtId, { paid_amount: debt.paid_amount + paid });
 }
 
 /* --------------------------------- receipts --------------------------------- */
 
 export async function createReceipt(input: NewRow<Receipt>) {
-  const row = stamp(input) as Receipt;
-  await db().receipts.add(row);
-  triggerMutationSync();
-  return row;
+  try {
+    const row = stamp(input) as Receipt;
+    await db().receipts.add(row);
+    triggerMutationSync();
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function updateReceipt(id: ID, patch: Partial<Receipt>) {
-  await db().receipts.update(id, { ...patch, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().receipts.update(id, { ...patch, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function deleteReceipt(id: ID) {
-  await db().receipts.update(id, { deleted: 1, updated_at: nowISO() });
-  triggerMutationSync();
+  try {
+    await db().receipts.update(id, { deleted: 1, updated_at: nowISO() });
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /* ------------------------------- notifications ------------------------------ */
@@ -414,20 +540,32 @@ export async function deleteReceipt(id: ID) {
 export async function pushNotification(
   input: Omit<NewRow<AppNotification>, "read">,
 ): Promise<AppNotification> {
-  const row = stamp({ ...input, read: 0 as const }) as AppNotification;
-  await db().notifications.add(row);
-  return row;
+  try {
+    const row = stamp({ ...input, read: 0 as const }) as AppNotification;
+    await db().notifications.add(row);
+    return row;
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function markNotificationRead(id: ID) {
-  await db().notifications.update(id, { read: 1, updated_at: nowISO() });
+  try {
+    await db().notifications.update(id, { read: 1, updated_at: nowISO() });
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 export async function markAllNotificationsRead() {
-  const unread = await db()
-    .notifications.filter((n) => !n.read && !n.deleted)
-    .toArray();
-  await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+  try {
+    const unread = await db()
+      .notifications.filter((n) => !n.read && !n.deleted)
+      .toArray();
+    await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+  } catch (err) {
+    reportMutationError(err);
+  }
 }
 
 /**
@@ -471,22 +609,26 @@ export function getSalaryIdForMonth(month: string): string {
 }
 
 export async function upsertSalary(month: string, amount: number) {
-  const d = db();
-  const id = getSalaryIdForMonth(month);
-  const existing = await d.salaries.get(id);
-  if (existing) {
-    await d.salaries.update(id, { amount, updated_at: nowISO() });
-  } else {
-    await d.salaries.put({
-      id,
-      month,
-      amount,
-      created_at: nowISO(),
-      updated_at: nowISO(),
-      deleted: 0 as const,
-    });
+  try {
+    const d = db();
+    const id = getSalaryIdForMonth(month);
+    const existing = await d.salaries.get(id);
+    if (existing) {
+      await d.salaries.update(id, { amount, updated_at: nowISO() });
+    } else {
+      await d.salaries.put({
+        id,
+        month,
+        amount,
+        created_at: nowISO(),
+        updated_at: nowISO(),
+        deleted: 0 as const,
+      });
+    }
+    triggerMutationSync();
+  } catch (err) {
+    reportMutationError(err);
   }
-  triggerMutationSync();
 }
 
 export async function getSalaryForMonth(month: string) {

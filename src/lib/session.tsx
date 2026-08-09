@@ -219,17 +219,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             const prevMs = current.updated_at ? Date.parse(current.updated_at) : 0;
             const { data: cloudProfile } = await sb
               .from("profiles")
-              .select("updated_at")
+              .select("updated_at, avatar_url")
               .eq("id", next.supabase_user_id)
               .maybeSingle();
             const cloudMs = cloudProfile?.updated_at ? Date.parse(cloudProfile.updated_at) : 0;
             if (cloudMs <= prevMs) {
+              // avatar_url fallback ke cloud: edit nama aja jangan null-kan
+              // avatar yang di-upload di device lain.
               await sb.from("profiles").upsert(
                 {
                   id: next.supabase_user_id,
                   name: next.name,
                   avatar_color: next.avatar_color,
                   email: next.email,
+                  avatar_url: next.avatar_url ?? cloudProfile?.avatar_url ?? null,
                   updated_at: next.updated_at,
                 },
                 { onConflict: "id" },

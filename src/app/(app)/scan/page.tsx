@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { createReceipt, deleteReceipt, guessCategory, updateReceipt } from "@/lib/repo";
-import { prepareImage, runOcr } from "@/lib/ocr/client";
+import { compressReceiptImage, prepareImage, runOcr } from "@/lib/ocr/client";
 import { parseReceipt, reconcileItemTotal } from "@/lib/ocr/parser";
 import type { ParsedReceipt, Receipt } from "@/lib/types";
 import { cn, formatIDR, toDateKey } from "@/lib/utils";
@@ -64,8 +64,10 @@ export default function ScanPage() {
         setStage(s);
       });
       const parsed = ocrParsed ?? parseReceipt(text);
+      // Shrink the stored copy — OCR already ran on the full-res data URL.
+      const image = await compressReceiptImage(dataUrl);
       const receipt = await createReceipt({
-        image: dataUrl,
+        image,
         raw_text: text,
         parsed,
         status: "pending",
