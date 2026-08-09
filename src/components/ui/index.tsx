@@ -533,13 +533,26 @@ export function BalanceCard({
   return (
     <motion.div
       className={cn(
-        "relative overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#003d7a,#0072c6)] p-5 text-white shadow-lg shadow-brand/30",
+        "relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#003d7a,#0072c6)] p-5 text-white shadow-lg shadow-brand/30 sm:p-6",
         className,
       )}
       initial={getAnimation({ opacity: 0, y: 8 })}
       animate={getAnimation({ opacity: 1, y: 0 })}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
+      {/* Glass sheen + depth rings (dekoratif, bukan interaktif) */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),transparent_42%)]"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-20 -bottom-28 size-72 rounded-full border border-white/10"
+      />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-4 -bottom-6 size-32 rounded-full border border-white/[0.07]"
+      />
       {watermark ? (
         <span
           aria-hidden
@@ -577,8 +590,8 @@ export function BalanceCard({
           </span>
           {chip ? <span className="min-w-0 shrink-0">{chip}</span> : null}
         </div>
-        <p className="num mt-1 text-4xl font-bold tracking-tight sm:text-5xl">{value}</p>
-        {sub ? <div className="mt-2 text-xs text-white/80">{sub}</div> : null}
+        <p className="num mt-1 text-4xl leading-tight font-bold tracking-tight sm:text-5xl">{value}</p>
+        {sub ? <div className="mt-2.5 text-xs text-white/80">{sub}</div> : null}
       </div>
     </motion.div>
   );
@@ -668,17 +681,22 @@ export function MenuTile({
   return (
     <motion.div
       className={cn(
-        "flex cursor-pointer flex-col items-center gap-2 rounded-xl bg-surface p-3 shadow-(--shadow-card) hover:shadow-(--shadow-hover) transition-all duration-200",
+        "group flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3 shadow-(--shadow-card) transition-all duration-200 hover:border-border/80 hover:shadow-(--shadow-hover)",
         className,
       )}
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -1 }}
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.1 }}
     >
-      <span className={cn("grid size-11 place-items-center rounded-xl", tones[tone])}>
+      <span
+        className={cn(
+          "grid size-11 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105",
+          tones[tone],
+        )}
+      >
         <Icon className="size-5" />
       </span>
-      <span className="text-[11px] font-medium text-fg">{label}</span>
+      <span className="text-[11px] font-semibold text-fg sm:text-xs">{label}</span>
     </motion.div>
   );
 }

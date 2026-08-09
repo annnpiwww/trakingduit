@@ -18,20 +18,30 @@ export function StatTile({
   tone?: "neutral" | "income" | "expense" | "brand";
   className?: string;
 }) {
-  const toneClass = {
-    neutral: "text-fg",
-    income: "text-income",
-    expense: "text-expense",
-    brand: "text-brand",
-  }[tone];
+  const tones = {
+    neutral: { tile: "bg-surface-2 text-fg", value: "text-fg" },
+    income: { tile: "bg-income/10 text-income", value: "text-income" },
+    expense: { tile: "bg-expense/10 text-expense", value: "text-expense" },
+    brand: { tile: "bg-brand/10 text-brand", value: "text-brand" },
+  } as const;
+  const t = tones[tone];
 
   return (
-    <div className={cn("rounded-2xl border border-border bg-surface p-4", className)}>
-      <div className="flex items-center gap-2 text-xs text-muted">
-        {Icon ? <Icon className="size-3.5" /> : null}
-        {label}
+    <div
+      className={cn(
+        "rounded-2xl border border-border bg-surface p-4 shadow-(--shadow-card) transition-shadow duration-200 hover:shadow-(--shadow-hover)",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        {Icon ? (
+          <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", t.tile)}>
+            <Icon className="size-4" />
+          </span>
+        ) : null}
+        <span className="truncate text-xs font-medium text-muted">{label}</span>
       </div>
-      <p className={cn("num mt-1.5 text-lg font-semibold tracking-tight sm:text-xl", toneClass)}>
+      <p className={cn("num mt-3 truncate text-xl font-bold tracking-tight sm:text-2xl", t.value)}>
         {typeof value === "number" ? formatIDR(value) : value}
       </p>
       {hint ? <div className="mt-1 text-[11px] text-muted">{hint}</div> : null}

@@ -5,13 +5,16 @@ import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowDownLeft,
+  ArrowRight,
   ArrowUpRight,
   CalendarClock,
   ChartPie,
+  ChevronRight,
   ListOrdered,
   ScanText,
   Target,
   TrendingDown,
+  TrendingUp,
   WalletCards,
   AlertCircle,
   Sparkles,
@@ -31,6 +34,7 @@ import {
   MenuTile,
   Skeleton,
 } from "@/components/ui";
+import { StatTile } from "@/components/ui/stat-tile";
 import { useSession } from "@/lib/session";
 import { MonthSwitcher } from "@/components/layout/month-switcher";
 import { TransactionList } from "@/components/transactions/transaction-list";
@@ -62,7 +66,7 @@ function MoodPill({ mood }: { mood: Mood }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm",
+        "inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm",
         MOOD_TEXT[mood.tone],
       )}
     >
@@ -187,14 +191,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:space-y-5">
       {/* Greeting + month switcher - more compact */}
-      <div className="flex items-center justify-between gap-3 w-full">
+      <div className="flex w-full items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm sm:text-lg font-semibold tracking-tight leading-tight truncate">
+          <p className="truncate text-base leading-tight font-bold tracking-tight sm:text-xl">
             Hai, {displayName} 👋
           </p>
-          <p className="mt-0.5 text-[10px] sm:text-xs text-muted truncate">Gimana duit lo hari ini?</p>
+          <p className="mt-1 truncate text-[11px] text-muted sm:text-xs">Gimana duit lo hari ini?</p>
         </div>
         <div className="shrink-0">
           <MonthSwitcher value={month} onChange={setMonth} />
@@ -228,22 +232,37 @@ export default function DashboardPage() {
       />
       </div>
 
+      {/* Ringkasan bulan ini */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatTile label="Pemasukan" value={t.income} tone="income" icon={ArrowDownLeft} />
+        <StatTile label="Pengeluaran" value={t.expense} tone="expense" icon={ArrowUpRight} />
+        <StatTile
+          label="Selisih bulan ini"
+          value={t.net}
+          tone={t.net >= 0 ? "income" : "expense"}
+          icon={t.net >= 0 ? TrendingUp : TrendingDown}
+          className="col-span-2 sm:col-span-1"
+        />
+      </section>
+
       {/* Tradu AI Chat Entry */}
       <button
         data-tour="tradu"
         onClick={() => setTraduOpen(true)}
-        className="group flex w-full items-center gap-3 rounded-2xl bg-surface p-4 shadow-(--shadow-card) transition hover:bg-surface-2 cursor-pointer"
+        className="group flex w-full cursor-pointer items-center gap-3.5 rounded-2xl border border-border bg-surface p-4 text-left shadow-(--shadow-card) transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 hover:shadow-(--shadow-hover)"
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand/15 to-brand/5 text-brand ring-1 ring-brand/10 transition-transform duration-200 group-hover:scale-105">
           <Sparkles className="size-5" />
         </span>
-        <span className="flex-1 text-left">
-          <span className="block text-sm font-semibold">Tanya Tradu ✨</span>
-          <span className="block text-xs text-muted">
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold tracking-tight">Tanya Tradu ✨</span>
+          <span className="mt-0.5 block truncate text-xs text-muted">
             Tanya soal duit lo, roast pengeluaran, tips nabung...
           </span>
         </span>
-        <span className="text-xs text-muted transition group-hover:translate-x-0.5 group-hover:text-brand">→</span>
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-2 text-muted transition-all duration-200 group-hover:bg-brand group-hover:text-brand-fg">
+          <ArrowRight className="size-3.5" />
+        </span>
       </button>
 
       {/* Quick menu */}
