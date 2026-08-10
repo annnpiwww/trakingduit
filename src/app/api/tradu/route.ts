@@ -32,32 +32,51 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "messages array is required" }, { status: 400 });
     }
 
+    const ctx = financialContext ?? {};
+    const fmt = (n?: number) => (n == null ? "-" : `Rp${Math.round(n).toLocaleString("id-ID")}`);
+    const pct = (n?: number) => (n == null ? "-" : `${Math.round(n * 100)}%`);
+
     // Format financial details into a concise string for system prompt injection
-    const balanceStr = financialContext ? `
-Kondisi Keuangan Riel Pengguna Saat Ini:
-- Total Saldo Seluruh Dompet: Rp${financialContext.totalBalance.toLocaleString("id-ID")}
-- Pemasukan Bulan Ini: Rp${financialContext.income.toLocaleString("id-ID")}
-- Pengeluaran Bulan Ini: Rp${financialContext.expense.toLocaleString("id-ID")}
-- Selisih (Net): Rp${financialContext.net.toLocaleString("id-ID")}
+    const balanceStr = `
+KONDISI KEUANGAN PENGGUNA (data real dari app, jadikan acuan analisis):
+- Total Saldo Semua Dompet: ${fmt(ctx.totalBalance)}
+- Pemasukan bulan ini: ${fmt(ctx.income)} · Pengeluaran: ${fmt(ctx.expense)} · Sisa: ${fmt(ctx.net)}
+- Rasio nabung bulan ini: ${pct(ctx.savingsRate)} · Rata-rata keluar/hari: ${fmt(ctx.avgDailySpend)}
+- Proyeksi pengeluaran akhir bulan (laju saat ini): ${fmt(ctx.projectedMonthEnd)}
+- Pengeluaran bulan lalu: ${fmt(ctx.lastMonthExpense)} (${ctx.lastMonthDelta == null ? "belum ada data" : ctx.lastMonthDelta >= 0 ? `naik ${fmt(ctx.lastMonthDelta)} dari bulan lalu` : `turun ${fmt(-ctx.lastMonthDelta)} dari bulan lalu`})
+- Budget aktif: ${ctx.budgetUsage?.length ? ctx.budgetUsage.map((b: any) => `${b.name} ${pct(b.used)}`).join(", ") : "tidak ada"}
+- Tagihan jatuh tempo ≤7 hari: ${ctx.upcomingBills?.length ? ctx.upcomingBills.map((b: any) => `${b.name} (${b.daysLeft === 0 ? "hari ini" : `${b.daysLeft} hari lagi`})`).join(", ") : "tidak ada"}
 
 Top Kategori Pengeluaran Bulan Ini:
-${financialContext.topCategories?.map((c: any) => `- ${c.name}: Rp${c.total.toLocaleString("id-ID")} (${Math.round(c.share * 100)}%)`).join("\n") || "- (Belum ada data pengeluaran)"}
+${ctx.topCategories?.length ? ctx.topCategories.map((c: any) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n") : "- (Belum ada data pengeluaran)"}
 
 Transaksi Terakhir:
-${financialContext.recentTransactions?.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) Rp${tx.amount.toLocaleString("id-ID")}`).join("\n") || "- (Belum ada transaksi)"}
-` : "";
+${ctx.recentTransactions?.length ? ctx.recentTransactions.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) ${fmt(tx.amount)}`).join("\n") : "- (Belum ada transaksi)"}
+`;
 
-    const systemPrompt = `Kamu adalah Tradu (Trakingduit), asisten keuangan pribadi berbasis AI yang cerdas, ramah, empatik, dan analitis untuk Gen Z.
+    const systemPrompt = `Kamu adalah Tradu, asisten keuangan pribadi yang cerdas, hangat, dan analitis untuk Gen Z Indonesia.
 
-Ciri khas bahasamu:
-- Menggunakan bahasa Indonesia yang santai, hangat, dan mudah dipahami — gaul ringan, tapi tidak sarkas dan tidak pernah me-roast atau menyalahkan pengeluaran pengguna.
-- Selalu ramah, empatik, dan mendukung. Fokus pada solusi, bukan menghakimi.
-- Analitis dan taktis: berikan analisis keuangan yang jelas, tips menabung yang konkret, dan saran kelola anggaran yang logis serta bisa langsung dipraktikkan.
-- Jawab singkat padat, langsung ke intinya, hindari bertele-tele atau ceramah formal. Maksimal 3-4 kalimat per respons.
+PERSONA & BAHASA:
+- Bahasa Indonesia santai, hangat, gaul ringan ("lo", "duit", "tekor") tapi tetap profesional — bukan sarkas, bukan menghakimi, tidak pernah nge-roast.
+- Empatik dan mendukung: fokus solusi, bukan nyalahin. Kalau pengguna boros, bantu cara memperbaikinya, bukan men-judge.
+- Jawab singkat padat: 3-5 kalimat per respons, langsung ke inti. Gunakan angka konkret dari data.
+
+CARA BERPIKIR (WAJIB — ini yang bikin kamu pintar):
+1. SELALU hitung & pakai angka dari data di atas sebelum menjawab. Contoh: rasio nabung, proporsi kategori, laju harian vs proyeksi.
+2. Deteksi anomali dan pola:
+   - Pengeluaran > pemasukan → langsung tandai risiko defisit.
+   - Satu kategori > 30% pengeluaran → sebutkan itu sebagai "biang tekor" dan kasih cara kurangi.
+   - Proyeksi akhir bulan > pemasukan → warning habis sebelum gajian.
+   - Kategori naik drastis dari bulan lalu → tanyakan/ingatkan.
+3. Beri rekomendasi yang SPESIFIK dan BISA DILAKUKAN (angka konkret, bukan nasihat umum):
+   - Contoh buruk: "kurangi pengeluaran".
+   - Contoh bagus: "Budget GoFood lo 800rb/bulan (32% pengeluaran). Coba turunin ke 500rb — hemat 300rb/bulan ≈ 3,6 jt/tahun."
+4. Kalau data kosong/minim, akui dengan jujur dan arahkan ke fitur ("catat transaksi dulu, nanti aku bisa analisis lebih dalam"). JANGAN mengarang angka.
+5. Bedakan fakta dari data vs asumsi: jangan klaim hal yang tidak ada di data.
 
 ${balanceStr}
 
-Dalam percakapan ini, tanggapi pertanyaan pengguna sesuai dengan kepribadian Tradu dan manfaatkan data keuangan di atas jika relevan.`;
+Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatkan data keuangan jika relevan.`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
@@ -132,7 +151,8 @@ async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promi
       body: JSON.stringify({
         model: MODEL,
         messages: apiMessages,
-        temperature: 0.8,
+        // 0.7: cukup kreatif buat persona santai, tapi konsisten & analitis.
+        temperature: 0.7,
         stream: false,
       }),
       signal: controller.signal,
@@ -189,7 +209,7 @@ async function chatViaGemini(apiMessages: ApiMessage[]): Promise<string> {
       body: JSON.stringify({
         systemInstruction,
         contents,
-        generationConfig: { temperature: 0.8 },
+        generationConfig: { temperature: 0.7 },
       }),
     },
   );

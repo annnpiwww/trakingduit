@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { supabaseBrowser } from "@/lib/supabase";
 import { allWalletBalances } from "@/lib/repo";
 import { totals } from "@/lib/analytics";
-import { monthRange, toMonthKey } from "@/lib/utils";
+import { monthRange, toDateKey, toMonthKey } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -18,10 +18,10 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  "Roast pengeluaran gw",
-  "Boros di mana aja?",
-  "Cukup buat foya-foya gak?",
-  "Tips nabung dong",
+  "Duitku aman gak bulan ini?",
+  "Kategori mana yang paling bikin tekor?",
+  "Kasih tips hemat minggu ini dong",
+  "Cara capai target nabung gimana?",
 ];
 
 export function TraduChat({
@@ -40,6 +40,8 @@ export function TraduChat({
   // Load financial database information using Dexie hooks
   const month = toMonthKey();
   const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), [], []);
+  const budgets = useLiveQuery(() => db().budgets.filter((b) => !b.deleted).toArray(), [], []);
+  const bills = useLiveQuery(() => db().bills.filter((b) => !b.deleted && !b.archived).toArray(), [], []);
   const balances = useLiveQuery(
     async () => {
       await db().transactions.count();
@@ -49,6 +51,7 @@ export function TraduChat({
     [],
     {} as Record<string, number>,
   );
+  const allTx = useLiveQuery(() => db().transactions.filter((t) => !t.deleted).toArray(), [], []);
   const monthTx = useLiveQuery(() => {
     const { from, to } = monthRange(month);
     return db()
@@ -58,8 +61,59 @@ export function TraduChat({
       .toArray();
   }, [month], []);
 
+  // Konteks tambahan biar Tradu bisa analisis lebih dalam: rata-rata harian,
+  // proyeksi akhir bulan, perbandingan bulan lalu, budget usage, tagihan.
+  const lastMonth = React.useMemo(() => {
+    const [y, m] = month.split("-").map(Number);
+    const d = new Date(y, m - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, [month]);
+
+  const lastMonthTx = useLiveQuery(() => {
+    const { from, to } = monthRange(lastMonth);
+    return db()
+      .transactions.where("date")
+      .between(from, to, true, true)
+      .filter((t) => !t.deleted)
+      .toArray();
+  }, [lastMonth], []);
+
   const totalBalance = Object.values(balances).reduce((a, b) => a + b, 0);
   const t = totals(monthTx);
+
+  const nowDay = Number(toDateKey().slice(-2));
+  const daysInMonth = Number(monthRange(month).to.slice(-2));
+  const avgDailySpend = t.expense > 0 ? t.expense / Math.max(1, nowDay) : 0;
+  const projectedMonthEnd = avgDailySpend * daysInMonth;
+  const lastMonthExpense = totals(lastMonthTx).expense;
+  const lastMonthDelta =
+    lastMonthExpense > 0 || t.expense > 0 ? t.expense - lastMonthExpense : undefined;
+
+  const budgetUsage = React.useMemo(() => {
+    if (!budgets?.length || !allTx?.length) return [];
+    return budgets.map((b) => {
+      const cat = categories?.find((c) => c.id === b.category_id);
+      const spent = allTx
+        .filter((tx) => tx.type === "expense" && tx.category_id === b.category_id && tx.date.startsWith(month))
+        .reduce((a, tx) => a + tx.amount, 0);
+      return { name: cat?.name ?? "Tanpa kategori", used: b.amount > 0 ? spent / b.amount : 0 };
+    });
+  }, [budgets, allTx, categories, month]);
+
+  const upcomingBills = React.useMemo(() => {
+    if (!bills?.length) return [];
+    const today = toDateKey();
+    return bills
+      .map((b) => {
+        const daysLeft = Math.round(
+          (new Date(b.due_date).getTime() - new Date(today).getTime()) / 86_400_000,
+        );
+        return { name: b.name, daysLeft };
+      })
+      .filter((b) => b.daysLeft >= 0 && b.daysLeft <= 7)
+      .sort((a, b) => a.daysLeft - b.daysLeft)
+      .slice(0, 3);
+  }, [bills]);
 
   const recent = React.useMemo(
     () =>
@@ -144,6 +198,13 @@ export function TraduChat({
               income: t.income,
               expense: t.expense,
               net: t.net,
+              savingsRate: t.income > 0 ? t.net / t.income : 0,
+              avgDailySpend,
+              projectedMonthEnd,
+              lastMonthExpense,
+              lastMonthDelta,
+              budgetUsage,
+              upcomingBills,
               topCategories,
               recentTransactions: recent.map((tx) => {
                 const cat = categories?.find((c) => c.id === tx.category_id);
@@ -185,7 +246,22 @@ export function TraduChat({
         setTyping(false);
       }
     },
-    [typing, messages, totalBalance, t.income, t.expense, t.net, topCategories, recent],
+    [
+      typing,
+      messages,
+      totalBalance,
+      t.income,
+      t.expense,
+      t.net,
+      topCategories,
+      recent,
+      avgDailySpend,
+      projectedMonthEnd,
+      lastMonthExpense,
+      lastMonthDelta,
+      budgetUsage,
+      upcomingBills,
+    ],
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -263,7 +339,7 @@ export function TraduChat({
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tanya Tradu..."
+            placeholder="Tanya apa aja, santai aja"
             className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-sm outline-none transition placeholder:text-xs placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/20"
             disabled={typing}
           />
