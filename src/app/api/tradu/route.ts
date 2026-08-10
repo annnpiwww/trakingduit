@@ -13,7 +13,7 @@ export const maxDuration = 60;
 //   GEMINI_TRADU_MODEL -> default "gemini-2.0-flash"
 const API_URL = process.env.TRADU_API_URL;
 const API_KEY = process.env.TRADU_API_KEY;
-const MODEL = process.env.TRADU_MODEL ?? "auto/gemma";
+const MODEL = process.env.TRADU_MODEL ?? "ollama-cloud/gemma4:31b";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-2.0-flash";
 
@@ -118,19 +118,25 @@ interface ApiMessage {
 
 /** Panggil OpenAI-compatible proxy; throw kalau gagal. */
 async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promise<string> {
-  const res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: apiMessages,
-      temperature: 0.8,
-      stream: false,
-    }),
-  });
+  // Model self-hosted bisa lambat; batal di 50s biar route nggak kena Vercel
+  // maxDuration (60s) dan klien nggak nunggu terlalu lama.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 50_000);
+  try {
+    const res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: apiMessages,
+        temperature: 0.8,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
@@ -140,6 +146,9 @@ async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promi
   const reply = await parseChatCompletionsResponse(res);
   if (!reply?.trim()) throw new Error("Empty response from AI");
   return reply;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Panggil Google Gemini API langsung; throw kalau gagal. */
