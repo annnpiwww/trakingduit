@@ -34,7 +34,6 @@ import {
   MenuTile,
   Skeleton,
 } from "@/components/ui";
-import { StatTile } from "@/components/ui/stat-tile";
 import { useSession } from "@/lib/session";
 import { MonthSwitcher } from "@/components/layout/month-switcher";
 import { TransactionList } from "@/components/transactions/transaction-list";
@@ -226,25 +225,21 @@ export default function DashboardPage() {
             </span>
             <span className="size-1 rounded-full bg-white/40" aria-hidden />
             <span className="flex items-center gap-1">
+              {t.net >= 0 ? (
+                <TrendingUp className="size-3.5" />
+              ) : (
+                <TrendingDown className="size-3.5" />
+              )}
+              {mask(t.net)}
+            </span>
+            <span className="size-1 rounded-full bg-white/40" aria-hidden />
+            <span className="flex items-center gap-1">
               <WalletCards className="size-3.5" /> {wallets?.length ?? 0} dompet
             </span>
           </div>
         }
       />
       </div>
-
-      {/* Ringkasan bulan ini */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-        <StatTile label="Pemasukan" value={t.income} tone="income" icon={ArrowDownLeft} />
-        <StatTile label="Pengeluaran" value={t.expense} tone="expense" icon={ArrowUpRight} />
-        <StatTile
-          label="Selisih bulan ini"
-          value={t.net}
-          tone={t.net >= 0 ? "income" : "expense"}
-          icon={t.net >= 0 ? TrendingUp : TrendingDown}
-          className="col-span-2 sm:col-span-1"
-        />
-      </section>
 
       {/* Tradu AI Chat Entry */}
       <button

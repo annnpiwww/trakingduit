@@ -55,6 +55,7 @@ export default function WalletsPage() {
   const active = (wallets ?? []).filter((w) => !w.archived);
   const archived = (wallets ?? []).filter((w) => w.archived);
   const total = active.reduce((a, w) => a + ((balances ?? {})[w.id] ?? 0), 0);
+  const deleteTxCount = deleteConfirm ? (txCounts ?? {})[deleteConfirm.id] ?? 0 : 0;
 
   async function toggleArchive(w: Wallet) {
     await updateWallet(w.id, { archived: w.archived ? 0 : 1 });
@@ -182,34 +183,62 @@ export default function WalletsPage() {
       >
         <div className="space-y-4">
           <p className="text-sm text-muted">
-            Yakin ingin menghapus dompet <strong>{deleteConfirm?.name}</strong>?
+            {deleteTxCount > 0
+              ? `Yakin mau hapus dompet ${deleteConfirm?.name}? Ada riwayat ${deleteTxCount} transaksi loh!`
+              : `Yakin mau hapus dompet ${deleteConfirm?.name}?`}
           </p>
-          <p className="text-xs text-muted">
-            {((txCounts ?? {})[deleteConfirm?.id ?? ""] ?? 0) > 0
-              ? "Dompet ini punya transaksi, jadi akan diarsipkan (bukan dihapus permanen)."
-              : "Dompet ini akan dihapus permanen."}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="lg" className="flex-1" onClick={() => setDeleteConfirm(null)}>
-              Batal
-            </Button>
+          <div className="flex flex-col gap-2">
+            {deleteTxCount > 0 ? (
+              <>
+                <Button
+                  variant="danger"
+                  size="lg"
+                  className="w-full"
+                  onClick={async () => {
+                    if (!deleteConfirm) return;
+                    const res = await deleteWallet(deleteConfirm.id, { cascade: true });
+                    toast(`Dompet & ${res.txCount} transaksinya dihapus`, "success");
+                    setDeleteConfirm(null);
+                  }}
+                >
+                  Hapus Beserta {deleteTxCount} Transaksinya
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={async () => {
+                    if (!deleteConfirm) return;
+                    await updateWallet(deleteConfirm.id, { archived: 1 });
+                    toast("Dompet diarsipkan, riwayat aman", "success");
+                    setDeleteConfirm(null);
+                  }}
+                >
+                  Arsipkan Saja
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="danger"
+                size="lg"
+                className="w-full"
+                onClick={async () => {
+                  if (!deleteConfirm) return;
+                  await deleteWallet(deleteConfirm.id);
+                  toast("Dompet dihapus", "success");
+                  setDeleteConfirm(null);
+                }}
+              >
+                Hapus
+              </Button>
+            )}
             <Button
-              variant="danger"
+              variant="outline"
               size="lg"
-              className="flex-1"
-              onClick={async () => {
-                if (!deleteConfirm) return;
-                const res = await deleteWallet(deleteConfirm.id);
-                toast(
-                  res.archived
-                    ? `Dompet punya ${res.txCount} transaksi - diarsipkan, bukan dihapus`
-                    : "Dompet dihapus",
-                  "success",
-                );
-                setDeleteConfirm(null);
-              }}
+              className="w-full"
+              onClick={() => setDeleteConfirm(null)}
             >
-              Hapus
+              Batal
             </Button>
           </div>
         </div>

@@ -81,17 +81,29 @@ export async function updateWallet(id: ID, patch: Partial<Wallet>) {
   }
 }
 
-export async function deleteWallet(id: ID) {
+export async function deleteWallet(id: ID, options?: { cascade?: boolean }) {
   try {
-    const txCount = await db().transactions.where("wallet_id").equals(id).count();
-    if (txCount > 0) {
+    const d = db();
+    const linked = await d.transactions
+      .filter((t) => !t.deleted && (t.wallet_id === id || t.to_wallet_id === id))
+      .toArray();
+    if (options?.cascade) {
+      // cascade: soft-delete every linked transaction, then the wallet itself
+      await Promise.all(
+        linked.map((t) => d.transactions.update(t.id, { deleted: 1, updated_at: nowISO() })),
+      );
+      await d.wallets.update(id, { deleted: 1, updated_at: nowISO() });
+      triggerMutationSync();
+      return { archived: false, txCount: linked.length };
+    }
+    if (linked.length > 0) {
       // keep history intact — archive instead of destroying linked transactions
       await updateWallet(id, { archived: 1 });
-      return { archived: true, txCount };
+      return { archived: true, txCount: linked.length };
     }
-    await db().wallets.update(id, { deleted: 1, updated_at: nowISO() });
+    await d.wallets.update(id, { deleted: 1, updated_at: nowISO() });
     triggerMutationSync();
-    return { archived: false, txCount };
+    return { archived: false, txCount: 0 };
   } catch (err) {
     reportMutationError(err);
   }
