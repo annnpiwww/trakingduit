@@ -5,15 +5,15 @@ import { parseChatCompletionsResponse } from "@/lib/utils";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Konfigurasi: env opsional, ada default hardcoded (jangan diubah tanpa izin):
-//   TRADU_API_URL  -> default https://platinum-verbal-described-pty.trycloudflare.com/v1
-//   TRADU_API_KEY  -> default sk-23a9722ed5683fbd-bb8289-2bf96105
-//   TRADU_MODEL    -> default "hermes"
+// Konfigurasi via env saja (jangan commit secret/hardcode):
+//   TRADU_API_URL  -> OpenAI-compatible endpoint (mis. OmniRoute via Tailscale Funnel)
+//   TRADU_API_KEY  -> API key gateway (kalau gateway tanpa auth, tetap isi dummy)
+//   TRADU_MODEL    -> default "auto/best-chat"
 //   GEMINI_API_KEY -> fallback langsung ke Google Gemini API
 //   GEMINI_TRADU_MODEL -> default "gemini-2.0-flash"
-const API_URL = process.env.TRADU_API_URL ?? "https://platinum-verbal-described-pty.trycloudflare.com/v1";
-const API_KEY = process.env.TRADU_API_KEY ?? "sk-23a9722ed5683fbd-bb8289-2bf96105";
-const MODEL = process.env.TRADU_MODEL ?? "hermes";
+const API_URL = process.env.TRADU_API_URL;
+const API_KEY = process.env.TRADU_API_KEY;
+const MODEL = process.env.TRADU_MODEL ?? "auto/best-chat";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-2.0-flash";
 
@@ -84,6 +84,14 @@ Dalam percakapan ini, tanggapi pertanyaan pengguna sesuai dengan kepribadian Tra
         console.error("TRADU proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
       }
     }
+    // 2) Kalau cuma URL yang ada (gateway tanpa auth), tetep coba pakai key dummy
+    else if (API_URL) {
+      try {
+        reply = await chatViaOpenAI(apiMessages, "dummy-key");
+      } catch (err) {
+        console.error("TRADU proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
+      }
+    }
 
     // 2) Fallback ke Google Gemini API langsung
     if (!reply && GEMINI_API_KEY) {
@@ -109,12 +117,12 @@ interface ApiMessage {
 }
 
 /** Panggil OpenAI-compatible proxy; throw kalau gagal. */
-async function chatViaOpenAI(apiMessages: ApiMessage[]): Promise<string> {
+async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promise<string> {
   const res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: MODEL,

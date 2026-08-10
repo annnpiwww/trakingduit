@@ -170,7 +170,7 @@ export async function commitImport(
 
 export async function exportBackup(): Promise<string> {
   const d = db();
-  const [wallets, categories, transactions, budgets, goals, bills, receipts, notifications, settings, profile] =
+  const [wallets, categories, transactions, budgets, goals, bills, debts, salaries, receipts, notifications, settings, profile] =
     await Promise.all([
       d.wallets.toArray(),
       d.categories.toArray(),
@@ -178,6 +178,8 @@ export async function exportBackup(): Promise<string> {
       d.budgets.toArray(),
       d.goals.toArray(),
       d.bills.toArray(),
+      d.debts.toArray(),
+      d.salaries.toArray(),
       d.receipts.toArray(),
       d.notifications.toArray(),
       d.settings.toArray(),
@@ -186,9 +188,9 @@ export async function exportBackup(): Promise<string> {
   return JSON.stringify(
     {
       app: "trackingduit",
-      version: 1,
+      version: 2,
       exported_at: new Date().toISOString(),
-      data: { wallets, categories, transactions, budgets, goals, bills, receipts, notifications, settings, profile },
+      data: { wallets, categories, transactions, budgets, goals, bills, debts, salaries, receipts, notifications, settings, profile },
     },
     null,
     2,
@@ -211,6 +213,8 @@ export async function importBackup(json: string): Promise<number> {
     budgets: d.budgets,
     goals: d.goals,
     bills: d.bills,
+    debts: d.debts,
+    salaries: d.salaries,
     receipts: d.receipts,
     notifications: d.notifications,
     settings: d.settings,

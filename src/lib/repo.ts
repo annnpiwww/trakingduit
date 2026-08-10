@@ -306,7 +306,7 @@ async function checkBudgetAlerts(tx: Transaction) {
       .filter((t) => !t.deleted && t.type === "expense" && t.category_id === tx.category_id)
       .toArray()
   ).reduce((a, b) => a + b.amount, 0);
-  const ratio = spent / budget.amount;
+  const ratio = budget.amount > 0 ? spent / budget.amount : 0;
   if (ratio < 0.8) return;
   const cat = await d.categories.get(budget.category_id);
   const over = ratio >= 1;
@@ -454,11 +454,22 @@ export function nextDueDate(bill: Bill): string | undefined {
     case "weekly":
       d.setDate(d.getDate() + 7);
       break;
-    case "monthly":
+    case "monthly": {
+      // setMonth tanpa clamp: 31 Jan + 1 bulan = 3 Mar (JS rollover).
+      // Simpan hari asli, clamp ke hari terakhir bulan tujuan (29/30/31 Feb dst).
+      const day = d.getDate();
       d.setMonth(d.getMonth() + 1);
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, lastDay));
       break;
+    }
     case "yearly":
+      // 29 Feb + 1 tahun = 1 Mar (bukan tahun kabisat). Clamp ke 28 Feb.
+      const month = d.getMonth();
+      const day = d.getDate();
       d.setFullYear(d.getFullYear() + 1);
+      const lastDayFeb = new Date(d.getFullYear(), month + 1, 0).getDate();
+      if (month === 1 && day > lastDayFeb) d.setDate(lastDayFeb);
       break;
     default:
       return undefined;

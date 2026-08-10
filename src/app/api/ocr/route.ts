@@ -5,11 +5,11 @@ import { ocrViaOpenAI, parseOcrText } from "@/lib/ocr/prompt";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// AI OCR endpoint — OpenAI-compatible proxy. Defaults point at the Cloudflare
-// tunnel serving `ocrgambar-copy`; override via env when the tunnel rotates.
-const OCR_URL = process.env.OCR_API_URL ?? "https://platinum-verbal-described-pty.trycloudflare.com/v1";
-const OCR_API_KEY = process.env.OCR_API_KEY ?? "sk-23a9722ed5683fbd-bb8289-2bf96105";
-const OCR_MODEL = process.env.OCR_MODEL ?? "ocrgambar-copy";
+// AI OCR endpoint — OpenAI-compatible vision (mis. OmniRoute via Tailscale Funnel).
+// Di-set via env (OCR_API_URL / OCR_API_KEY / OCR_MODEL) — jangan hardcode.
+const OCR_URL = process.env.OCR_API_URL;
+const OCR_API_KEY = process.env.OCR_API_KEY;
+const OCR_MODEL = process.env.OCR_MODEL ?? "auto/best-vision";
 
 /**
  * POST /api/ocr — AI OCR via OpenAI-compatible vision endpoint (ocrgambar-copy).
@@ -37,6 +37,12 @@ export async function POST(request: Request) {
     return NextResponse.json(createErrorResponse("Body JSON tidak valid"), { status: 400 });
   }
   if (!image) return NextResponse.json(createErrorResponse("Field 'image' wajib diisi"), { status: 400 });
+  if (!OCR_URL || !OCR_API_KEY) {
+    return NextResponse.json(
+      { ...createErrorResponse("OCR_API_URL/OCR_API_KEY belum diset"), fallback: "tesseract" },
+      { status: 501 },
+    );
+  }
 
   try {
     const parsed = parseOcrText(await ocrViaOpenAI(OCR_URL, OCR_API_KEY, OCR_MODEL, image));
