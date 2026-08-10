@@ -60,8 +60,13 @@ export default function ScanPage() {
       return;
     }
     if (quotaExhausted) {
-      toast("Kuota scan hari ini habis. Upgrade buat scan lebih banyak!", "error");
-      router.push("/premium");
+      toast(
+        ocr.unlimited
+          ? "Soft cap scan hari ini kesentuh (100x). Besok bisa lagi ya!"
+          : "Kuota scan hari ini habis. Upgrade buat scan lebih banyak!",
+        "error",
+      );
+      if (!ocr.unlimited) router.push("/premium");
       return;
     }
     setBusy(true);

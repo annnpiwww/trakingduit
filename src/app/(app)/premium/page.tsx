@@ -14,7 +14,6 @@ import {
   Star,
   Zap,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { activateTier, TIERS, TIER_ORDER, useSubscription, type TierId } from "@/lib/subscription";
 import { Button, Card, Field, Input, Sheet, useToast } from "@/components/ui";
 import { cn, formatIDR } from "@/lib/utils";
@@ -41,7 +40,6 @@ function BenefitIcon({ text }: { text: string }) {
 
 export default function PremiumPage() {
   const toast = useToast();
-  const router = useRouter();
   const { tier, tradu, ocr, until } = useSubscription();
   const [activating, setActivating] = React.useState<TierId | null>(null);
   const reduceMotion = useReducedMotion();
@@ -281,15 +279,15 @@ function PricingCard({
         <Button
           className="w-full"
           variant={isCurrent ? "secondary" : popular || id === "pro" ? "primary" : "outline"}
-          onClick={onUpgrade}
-          disabled={isCurrent}
+          onClick={price === 0 ? undefined : onUpgrade}
+          disabled={isCurrent || price === 0}
         >
           {isCurrent ? (
             <>
               <Check className="size-4" /> Paket aktif
             </>
           ) : price === 0 ? (
-            "Tetap di gratis"
+            "Gratis selamanya"
           ) : (
             <>Upgrade ke {name}</>
           )}

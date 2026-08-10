@@ -183,7 +183,9 @@ export function TraduChat({
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: "Kuota Tradu hari ini udah habis nih. Upgrade ke Premium biar bisa lanjut ngobrol terus! ✨",
+            content: tradu.unlimited
+              ? "Soft cap Tradu hari ini udah kesentuh (200 pesan). Besok bisa lanjut lagi ya! ✨"
+              : "Kuota Tradu hari ini udah habis nih. Upgrade ke Premium biar bisa lanjut ngobrol terus! ✨",
           },
         ]);
         return;
@@ -196,7 +198,6 @@ export function TraduChat({
 
       try {
         const currentMessages = [...messages, newUserMsg];
-        if (!quotaExhausted) await consumeQuota("tradu");
         const sb = supabaseBrowser();
         const token = sb ? (await sb.auth.getSession()).data.session?.access_token : undefined;
         const res = await fetch("/api/tradu", {
@@ -239,6 +240,9 @@ export function TraduChat({
         if (!res.ok) {
           throw new Error("HTTP error " + res.status);
         }
+        // Quota dipakai HANYA kalau AI berhasil jawab — request gagal (502,
+        // timeout) jangan sampai buang kuota user.
+        if (!quotaExhausted) await consumeQuota("tradu");
 
         const data = await res.json();
         setMessages((prev) => [
@@ -372,14 +376,22 @@ export function TraduChat({
         {/* Input */}
         {quotaExhausted ? (
           <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-            <Link href="/premium" onClick={onClose}>
-              <Button className="w-full" size="lg">
-                Upgrade ke Premium
-              </Button>
-            </Link>
-            <p className="text-center text-[11px] text-muted">
-              Kuota gratis {tradu.limit} pesan/hari. Reset besok, atau upgrade sekarang.
-            </p>
+            {tradu.unlimited ? (
+              <p className="py-2 text-center text-[11px] text-muted">
+                Soft cap {tradu.limit} pesan/hari. Reset besok ya.
+              </p>
+            ) : (
+              <>
+                <Link href="/premium" onClick={onClose}>
+                  <Button className="w-full" size="lg">
+                    Upgrade ke Premium
+                  </Button>
+                </Link>
+                <p className="text-center text-[11px] text-muted">
+                  Kuota gratis {tradu.limit} pesan/hari. Reset besok, atau upgrade sekarang.
+                </p>
+              </>
+            )}
           </div>
         ) : (
         <form
