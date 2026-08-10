@@ -107,17 +107,21 @@ async function tryAiOcr(dataUrl: string): Promise<OcrResult | null> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: compressed }),
-      signal: AbortSignal.timeout(25_000),
+      // AI self-hosted (OmniRoute) bisa 10-40s — jangan abort di 25s biar
+      // nggak kejatuh ke Tesseract padahal AI-nya sehat.
+      signal: AbortSignal.timeout(50_000),
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { text?: string; structured?: Record<string, unknown> };
     if (!json.text?.trim()) return null;
     const structured = json.structured as Parameters<typeof structuredToParsed>[0] | undefined;
-    // Incomplete extraction (no merchant/total/items) → fall back to Tesseract.
+    // Structured lengkap → pakai hasil AI langsung (merchant/total/items).
     if (structured && (structured.merchant || structured.total || (structured.items?.length ?? 0) > 0)) {
       return { text: json.text, parsed: structuredToParsed(structured), engine: "ai-ocr" };
     }
-    return null;
+    // Structured kosong/parsial → AI tetap lebih akurat dari Tesseract;
+    // balikin teks mentahnya, parser regex lokal yang lanjut.
+    return { text: json.text, engine: "ai-ocr" };
   } catch {
     return null;
   }

@@ -141,14 +141,41 @@ async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promi
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
     throw new Error(`API Error (${res.status}): ${errorText.slice(0, 500)}`);
-  }
-
-  const reply = await parseChatCompletionsResponse(res);
-  if (!reply?.trim()) throw new Error("Empty response from AI");
-  return reply;
+  }    const raw = await parseChatCompletionsResponse(res);
+    const reply = stripThinkingProcess(raw);
+    if (!reply?.trim()) throw new Error("Empty response from AI");
+    return reply;
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Gemma reasoning (google/gemma-4-31b via combo) kadang nempel blok
+ * "Thinking Process: ..." sebelum jawaban. Buang bagian itu, sisakan
+ * jawaban asli — format yang umum:
+ *   Thinking Process:\n\n1. **...**\n\n### Instruction:\n<prompt>\n\n### Response:\n<jawaban>
+ */
+function stripThinkingProcess(reply: string): string {
+  const instructionIdx = reply.indexOf("### Instruction");
+  if (instructionIdx >= 0) {
+    const after = reply.slice(instructionIdx);
+    const responseIdx = after.indexOf("### Response");
+    if (responseIdx >= 0) {
+      const answer = after.slice(responseIdx + "### Response".length).trim();
+      if (answer) return answer;
+    }
+    const cleaned = after.replace(/^###\s*Instruction.*$/m, "").trim();
+    if (cleaned) return cleaned;
+  }
+  const thinkingIdx = reply.search(/Thinking\s*Process\s*:/i);
+  if (thinkingIdx >= 0) {
+    // Buang blok thinking (sampai baris kosong pertama setelah list), sisanya jawaban.
+    const rest = reply.slice(thinkingIdx);
+    const trimmed = rest.replace(/^Thinking\s*Process\s*:[\s\S]*?\n\s*\n/, "").trim();
+    if (trimmed) return trimmed;
+  }
+  return reply;
 }
 
 /** Panggil Google Gemini API langsung; throw kalau gagal. */

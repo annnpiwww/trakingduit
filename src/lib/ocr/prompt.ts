@@ -110,11 +110,38 @@ export async function ocrViaOpenAI(
   }
 }
 
-/** Parse model text → AiOcrResponse; strip code fences, ambil objek JSON walau dibungkus prosa. */
+/**
+ * Parse model text → AiOcrResponse; strip code fences, ambil objek JSON walau
+ * dibungkus prosa/Thinking Process. Kalau JSON-nya gagal/nggak ada, JANGAN
+ * throw — balikin raw_text saja (structured kosong). Route bakal tetap balas
+ * 200 + text, dan client pakai AI text-nya daripada jatuh ke Tesseract.
+ */
 export function parseOcrText(text: string): AiOcrResponse {
-  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const cleaned = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
-  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-  return JSON.parse(slice) as AiOcrResponse;
+  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : "";
+  if (slice) {
+    try {
+      const parsed = JSON.parse(slice) as Partial<AiOcrResponse>;
+      return {
+        raw_text: typeof parsed.raw_text === "string" && parsed.raw_text.trim()
+          ? parsed.raw_text
+          : cleaned,
+        ...(parsed.merchant != null ? { merchant: parsed.merchant } : {}),
+        ...(parsed.address != null ? { address: parsed.address } : {}),
+        ...(parsed.date != null ? { date: parsed.date } : {}),
+        ...(parsed.total != null ? { total: parsed.total } : {}),
+        ...(parsed.tax != null ? { tax: parsed.tax } : {}),
+        ...(parsed.category != null ? { category: parsed.category } : {}),
+        ...(Array.isArray(parsed.items) ? { items: parsed.items } : {}),
+      };
+    } catch {
+      // JSON rusak → fall through, pakai teks mentah di bawah.
+    }
+  }
+  return { raw_text: cleaned };
 }
