@@ -105,7 +105,7 @@ export default function MenuPage() {
       </Button>
 
       <p className="text-center text-xs text-muted">
-        TrackingDuit v1.17.1
+        TrackingDuit v1.17.2
       </p>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />

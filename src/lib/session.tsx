@@ -190,8 +190,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = React.useCallback(async () => {
     const sb = supabaseBrowser();
+    const cloudUser = profile?.supabase_user_id;
     let synced = true;
-    if (sb) {
+    if (sb && cloudUser) {
       try {
         // Sync one last time before signing out and clearing local DB
         await syncSupabase();
@@ -204,10 +205,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await sb.auth.signOut();
     }
     sessionStorage.removeItem(UNLOCK_KEY);
-    if (synced) await resetAll();
+    if (cloudUser && synced) {
+      // Data aman di cloud → wipe cache lokal biar akun lain nggak lihat data lama.
+      await resetAll();
+    } else {
+      // Mode lokal-only / sync gagal: jangan hapus data — itu satu-satunya salinan.
+      // Cukup lepas profil biar balik ke layar login, data tabel tetap utuh.
+      await db().profile.delete(PROFILE_ID);
+    }
     setProfile(null);
     setStatus("signed-out");
-  }, []);
+  }, [profile]);
 
   const updateProfile = React.useCallback(
     async (patch: Partial<UserProfile>) => {
