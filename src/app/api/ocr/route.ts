@@ -9,7 +9,7 @@ export const maxDuration = 60;
 // Di-set via env (OCR_API_URL / OCR_API_KEY / OCR_MODEL) — jangan hardcode.
 const OCR_URL = process.env.OCR_API_URL;
 const OCR_API_KEY = process.env.OCR_API_KEY;
-const OCR_MODEL = process.env.OCR_MODEL ?? "auto/best-vision";
+const OCR_MODEL = process.env.OCR_MODEL ?? "ollama-cloud/gemma4:31b";
 
 /**
  * POST /api/ocr — AI OCR via OpenAI-compatible vision endpoint (ocrgambar-copy).

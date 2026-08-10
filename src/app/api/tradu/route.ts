@@ -13,7 +13,7 @@ export const maxDuration = 60;
 //   GEMINI_TRADU_MODEL -> default "gemini-2.0-flash"
 const API_URL = process.env.TRADU_API_URL;
 const API_KEY = process.env.TRADU_API_KEY;
-const MODEL = process.env.TRADU_MODEL ?? "auto/best-chat";
+const MODEL = process.env.TRADU_MODEL ?? "auto/gemma";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-2.0-flash";
 

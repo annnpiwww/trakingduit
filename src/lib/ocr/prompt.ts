@@ -61,7 +61,8 @@ export async function ocrViaOpenAI(
   apiKey: string,
   model: string,
   image: string,
-  timeoutMs = 30_000,
+  // Model self-hosted (OmniRoute) bisa lambat (10-40s) — jangan bunuh di 30s.
+  timeoutMs = 55_000,
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
