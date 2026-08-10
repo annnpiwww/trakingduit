@@ -10,7 +10,7 @@
 | Domain `trakingduit.my.id` | ✅ LIVE di Vercel |
 | Vercel project | ✅ `trackingduit` (projectId `prj_kd6D7S6M55Tk0Extkq6r909OVFfB`) |
 | Version app | `v1.17.2` (package.json + menu page) |
-| Commit terakhir | `a6a5cad` — feat(tradu): tunning + enrich context + fix TS error + quick prompts Gen Z |
+| Commit terakhir | `7cd6740` — fix(tradu): strip markdown bold/italic/code + escape backtick di system prompt |
 | Git working tree | ✅ Bersih, pushed ke `origin/main` |
 
 ## 🧠 AI (Tradu & OCR) — Infrastruktur

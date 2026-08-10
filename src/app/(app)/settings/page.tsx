@@ -23,6 +23,7 @@ import Link from "next/link";
 import { db, resetAll } from "@/lib/db";
 import { createCategory, deleteCategory } from "@/lib/repo";
 import { useSession } from "@/lib/session";
+import { useSubscription } from "@/lib/subscription";
 import { useTheme } from "@/lib/theme";
 import { lastSheetSync, syncGoogleSheet } from "@/lib/sync/sheets";
 import { lastSupabaseSync, syncSupabase } from "@/lib/sync/supabase-sync";
@@ -65,6 +66,7 @@ const AUTO_SYNC_BADGE: Record<
 export default function SettingsPage() {
   const toast = useToast();
   const { profile, updateProfile, signOut, supabaseEnabled, lock } = useSession();
+  const { tier } = useSubscription();
   const { theme, setTheme } = useTheme();
 
   const [name, setName] = React.useState("");
@@ -177,6 +179,10 @@ export default function SettingsPage() {
   }
 
   async function downloadBackup() {
+    if (tier === "free") {
+      toast("Unduh backup buat member Premium. Upgrade di Menu > Premium", "error");
+      return;
+    }
     const json = await exportBackup();
     downloadFile(`trackingduit-backup-${new Date().toISOString().slice(0, 10)}.json`, json, "application/json");
     toast("Backup diunduh", "success");

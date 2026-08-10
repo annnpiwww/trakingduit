@@ -3,11 +3,13 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SendHorizontal, Sparkles } from "lucide-react";
-import { Sheet, Button } from "@/components/ui";
+import { Sheet, Button, Badge } from "@/components/ui";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { supabaseBrowser } from "@/lib/supabase";
+import { consumeQuota, useSubscription } from "@/lib/subscription";
 import { allWalletBalances } from "@/lib/repo";
+import Link from "next/link";
 import { totals } from "@/lib/analytics";
 import { monthRange, toDateKey, toMonthKey } from "@/lib/utils";
 
@@ -36,6 +38,8 @@ export function TraduChat({
   const [typing, setTyping] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const { tradu } = useSubscription();
+  const quotaExhausted = tradu.left <= 0;
 
   // Load financial database information using Dexie hooks
   const month = toMonthKey();
@@ -173,6 +177,18 @@ export function TraduChat({
       const trimmed = text.trim();
       if (!trimmed || typing) return;
 
+      if (quotaExhausted) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            content: "Kuota Tradu hari ini udah habis nih. Upgrade ke Premium biar bisa lanjut ngobrol terus! ✨",
+          },
+        ]);
+        return;
+      }
+
       const newUserMsg: Message = { id: `u-${Date.now()}`, role: "user", content: trimmed };
       setMessages((prev) => [...prev, newUserMsg]);
       setInput("");
@@ -180,6 +196,7 @@ export function TraduChat({
 
       try {
         const currentMessages = [...messages, newUserMsg];
+        if (!quotaExhausted) await consumeQuota("tradu");
         const sb = supabaseBrowser();
         const token = sb ? (await sb.auth.getSession()).data.session?.access_token : undefined;
         const res = await fetch("/api/tradu", {
@@ -249,6 +266,7 @@ export function TraduChat({
     [
       typing,
       messages,
+      quotaExhausted,
       totalBalance,
       t.income,
       t.expense,
@@ -270,7 +288,28 @@ export function TraduChat({
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title="Chat with Tradu ✨" size="lg">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Chat with Tradu ✨"
+      size="lg"
+      description={
+        <span className="flex items-center gap-1.5">
+          {tradu.unlimited ? (
+            <Badge tone="brand">Unlimited</Badge>
+          ) : (
+            <Badge tone={quotaExhausted ? "expense" : "neutral"}>
+              Sisa {tradu.left}/{tradu.limit} hari ini
+            </Badge>
+          )}
+          {quotaExhausted ? (
+            <Link href="/premium" onClick={onClose} className="text-brand underline underline-offset-2">
+              Upgrade
+            </Link>
+          ) : null}
+        </span>
+      }
+    >
       <div className="-mx-5 -mt-4 flex h-[60dvh] flex-col sm:h-[450px]">
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
@@ -316,7 +355,7 @@ export function TraduChat({
         </div>
 
         {/* Quick prompts — only before user sends first message */}
-        {messages.length <= 1 && (
+        {messages.length <= 1 && !quotaExhausted && (
           <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-none">
             {QUICK_PROMPTS.map((p) => (
               <button
@@ -331,6 +370,18 @@ export function TraduChat({
         )}
 
         {/* Input */}
+        {quotaExhausted ? (
+          <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+            <Link href="/premium" onClick={onClose}>
+              <Button className="w-full" size="lg">
+                Upgrade ke Premium
+              </Button>
+            </Link>
+            <p className="text-center text-[11px] text-muted">
+              Kuota gratis {tradu.limit} pesan/hari. Reset besok, atau upgrade sekarang.
+            </p>
+          </div>
+        ) : (
         <form
           onSubmit={handleSubmit}
           className="flex items-center gap-2 border-t border-border px-4 py-3"
@@ -347,6 +398,7 @@ export function TraduChat({
             <SendHorizontal className="size-4" />
           </Button>
         </form>
+        )}
       </div>
     </Sheet>
   );

@@ -1,0 +1,36 @@
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * Aktivasi premium via kode (mode uji sebelum payment live).
+ *
+ * Dipakai sementara sampai integrasi Midtrans/QRIS selesai: admin kasih kode
+ * (env PREMIUM_ACTIVATION_CODE) ke tester, user masukin di halaman Premium,
+ * route ini verifikasi dan balikin tier + durasi. Client yang menulis tier
+ * ke Dexie (lihat activateTier di lib/subscription).
+ *
+ * honey: kode statis = rawan bocor; ganti dengan webhook Midtrans sebelum
+ * monetisasi live (trigger: fitur payment masuk).
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const { code, tier } = (await req.json()) as { code?: string; tier?: string };
+    const expected = process.env.PREMIUM_ACTIVATION_CODE;
+    if (!expected) {
+      return NextResponse.json(
+        { ok: false, error: "Aktivasi belum dikonfigurasi (PREMIUM_ACTIVATION_CODE kosong)" },
+        { status: 503 },
+      );
+    }
+    if (!code || code.trim() !== expected) {
+      return NextResponse.json({ ok: false, error: "Kode aktivasi salah" }, { status: 401 });
+    }
+    if (tier !== "plus" && tier !== "pro") {
+      return NextResponse.json({ ok: false, error: "Tier tidak valid" }, { status: 400 });
+    }
+    // Durasi default 30 hari; bisa di-override env untuk masa uji.
+    const days = Number(process.env.PREMIUM_TRIAL_DAYS || 30);
+    return NextResponse.json({ ok: true, tier, days });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Request tidak valid" }, { status: 400 });
+  }
+}

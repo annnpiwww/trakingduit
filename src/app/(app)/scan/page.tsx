@@ -13,9 +13,11 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/db";
 import { createReceipt, deleteReceipt, guessCategory, updateReceipt } from "@/lib/repo";
 import { compressReceiptImage, prepareImage, runOcr } from "@/lib/ocr/client";
+import { consumeQuota, useSubscription } from "@/lib/subscription";
 import { parseReceipt, reconcileItemTotal } from "@/lib/ocr/parser";
 import type { ParsedReceipt, Receipt } from "@/lib/types";
 import { cn, formatIDR, toDateKey } from "@/lib/utils";
@@ -33,8 +35,11 @@ import { TransactionSheet, type TransactionDraft } from "@/components/transactio
 
 export default function ScanPage() {
   const toast = useToast();
+  const router = useRouter();
   const cameraRef = React.useRef<HTMLInputElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const { ocr } = useSubscription();
+  const quotaExhausted = ocr.left <= 0;
 
   const [busy, setBusy] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
@@ -54,6 +59,11 @@ export default function ScanPage() {
       toast("File harus berupa gambar", "error");
       return;
     }
+    if (quotaExhausted) {
+      toast("Kuota scan hari ini habis. Upgrade buat scan lebih banyak!", "error");
+      router.push("/premium");
+      return;
+    }
     setBusy(true);
     setProgress(0.02);
     setStage("Nyiapin gambar...");
@@ -63,6 +73,7 @@ export default function ScanPage() {
         setProgress(ratio);
         setStage(s);
       });
+      await consumeQuota("ocr");
       const parsed = ocrParsed ?? parseReceipt(text);
       // Shrink the stored copy — OCR already ran on the full-res data URL.
       const image = await compressReceiptImage(dataUrl);
@@ -139,18 +150,36 @@ export default function ScanPage() {
             <p className="mt-1 text-xs text-muted">
               Foto struknya, nominal sama nama toko bakal keisi otomatis. Bisa lo edit sebelum disimpen.
             </p>
+            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11px] text-muted">
+              {ocr.unlimited ? (
+                <Badge tone="brand">Scan unlimited</Badge>
+              ) : (
+                <Badge tone={quotaExhausted ? "expense" : "neutral"}>
+                  Sisa {ocr.left}/{ocr.limit} scan hari ini
+                </Badge>
+              )}
+            </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button className="w-full sm:w-auto" onClick={() => cameraRef.current?.click()} disabled={busy}>
+              <Button className="w-full sm:w-auto" onClick={() => cameraRef.current?.click()} disabled={busy || quotaExhausted}>
                 <Camera className="size-4" /> Ambil foto
               </Button>
               <Button
                 variant="secondary"
                 className="w-full sm:w-auto"
                 onClick={() => fileRef.current?.click()}
-                disabled={busy}
+                disabled={busy || quotaExhausted}
               >
                 <ImageUp className="size-4" /> Pilih gambar
               </Button>
+              {quotaExhausted ? (
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => router.push("/premium")}
+                >
+                  Upgrade kuota
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>

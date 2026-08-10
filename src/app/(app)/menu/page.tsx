@@ -7,6 +7,7 @@ import {
   ChartPie,
   ChevronRight,
   CreditCard,
+  Crown,
   HandCoins,
   LogOut,
   MonitorSmartphone,
@@ -16,7 +17,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { useSession } from "@/lib/session";
-import { Button, Card, Field, Input, Sheet, useToast } from "@/components/ui";
+import { useSubscription } from "@/lib/subscription";
+import { Badge, Button, Card, Field, Input, Sheet, useToast } from "@/components/ui";
 import { InstallSheet } from "@/components/install/install-sheet";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +30,13 @@ const ITEMS = [
   { href: "/goals", label: "Target Nabung", desc: "Pantau progres menabung", icon: Target },
   { href: "/bills", label: "Tagihan & Cicilan", desc: "Pengingat jatuh tempo", icon: CalendarClock },
   { href: "/analytics", label: "Analisis", desc: "Cek tren pengeluaran kamu", icon: ChartPie },
+  { href: "/premium", label: "Premium", desc: "Buka semua fitur AI tanpa batas", icon: Crown },
   { href: "/settings", label: "Pengaturan", desc: "Sinkron, data, tema, PIN", icon: Settings },
 ];
 
 export default function MenuPage() {
   const { profile, signOut } = useSession();
+  const { tier } = useSubscription();
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [installOpen, setInstallOpen] = React.useState(false);
 
@@ -60,7 +64,14 @@ export default function MenuPage() {
           <p className="truncate text-sm font-semibold">{profile?.name}</p>
           <p className="truncate text-xs text-muted">{profile?.email ?? "Mode lokal"}</p>
         </div>
-        <ChevronRight className="size-4 text-muted shrink-0" />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {tier !== "free" ? (
+            <Badge tone={tier === "pro" ? "warn" : "brand"}>
+              <Crown className="size-3" /> {tier === "pro" ? "Pro" : "Premium"}
+            </Badge>
+          ) : null}
+          <ChevronRight className="size-4 text-muted" />
+        </div>
       </Card>
 
       <Card className="overflow-hidden">
@@ -71,13 +82,27 @@ export default function MenuPage() {
                 href={item.href}
                 className="flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2"
               >
-                <span className="grid size-9 place-items-center rounded-full bg-brand/10 text-brand">
+                <span
+                  className={cn(
+                    "grid size-9 place-items-center rounded-full",
+                    item.href === "/premium"
+                      ? tier === "free"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-brand/10 text-brand"
+                      : "bg-brand/10 text-brand",
+                  )}
+                >
                   <item.icon className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{item.label}</span>
                   <span className="block text-xs text-muted">{item.desc}</span>
                 </span>
+                {item.href === "/premium" ? (
+                  <Badge tone={tier === "free" ? "warn" : "brand"}>
+                    {tier === "free" ? "Coba" : "Aktif"}
+                  </Badge>
+                ) : null}
                 <ChevronRight className="size-4 text-muted" />
               </Link>
             </li>
