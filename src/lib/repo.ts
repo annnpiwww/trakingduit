@@ -131,6 +131,17 @@ export async function walletBalance(walletId: ID): Promise<number> {
   return balance;
 }
 
+/** Set a wallet's balance to match real-world money by shifting `initial_balance`
+ *  by the delta, so transaction history stays intact. Returns the new balance. */
+export async function adjustWalletBalance(walletId: ID, targetBalance: number): Promise<number> {
+  const wallet = await db().wallets.get(walletId);
+  if (!wallet) return 0;
+  const current = await walletBalance(walletId);
+  const diff = targetBalance - current;
+  await updateWallet(walletId, { initial_balance: wallet.initial_balance + diff });
+  return targetBalance;
+}
+
 /** Balance per wallet, optionally cut off at `upToDate` (YYYY-MM-DD, inclusive)
  *  so the dashboard can show the balance at the end of a selected past month. */
 export async function allWalletBalances(upToDate?: string): Promise<Record<ID, number>> {

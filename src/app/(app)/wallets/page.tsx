@@ -2,9 +2,23 @@
 
 import * as React from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Archive, ArchiveRestore, Pencil, Plus, Trash2, Wallet as WalletIcon } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+  Wallet as WalletIcon,
+} from "lucide-react";
 import { db } from "@/lib/db";
-import { allWalletBalances, createWallet, deleteWallet, updateWallet } from "@/lib/repo";
+import {
+  adjustWalletBalance,
+  allWalletBalances,
+  createWallet,
+  deleteWallet,
+  updateWallet,
+} from "@/lib/repo";
 import { WALLET_COLORS, WALLET_TYPE_LABEL } from "@/lib/seed";
 import type { Wallet, WalletType } from "@/lib/types";
 import { cn, formatIDR, parseAmount } from "@/lib/utils";
@@ -28,6 +42,7 @@ export default function WalletsPage() {
   const [editing, setEditing] = React.useState<Wallet | null>(null);
   const [open, setOpen] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState<Wallet | null>(null);
+  const [adjustWallet, setAdjustWallet] = React.useState<Wallet | null>(null);
 
   const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted).sortBy("order"), []);
   const balances = useLiveQuery(
@@ -102,7 +117,18 @@ export default function WalletsPage() {
       <BalanceCard
         label="Total saldo gabungan"
         value={formatIDR(total)}
-        sub={<span>{active.length} dompet aktif</span>}
+        sub={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span>{active.length} dompet aktif</span>
+            <button
+              type="button"
+              onClick={() => setAdjustWallet(null)}
+              className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-white/25"
+            >
+              <SlidersHorizontal className="size-3" /> Setel Saldo Real
+            </button>
+          </span>
+        }
       />
 
       {active.length ? (
@@ -119,6 +145,7 @@ export default function WalletsPage() {
               }}
               onArchive={() => toggleArchive(w)}
               onDelete={() => setDeleteConfirm(w)}
+              onAdjust={() => setAdjustWallet(w)}
             />
           ))}
         </div>
@@ -159,6 +186,7 @@ export default function WalletsPage() {
                 }}
                 onArchive={() => toggleArchive(w)}
                 onDelete={() => setDeleteConfirm(w)}
+                onAdjust={() => setAdjustWallet(w)}
               />
             ))}
           </div>
@@ -173,6 +201,14 @@ export default function WalletsPage() {
           setOpen(false);
           setEditing(null);
         }}
+      />
+
+      <AdjustBalanceSheet
+        open={adjustWallet !== null}
+        wallet={adjustWallet}
+        wallets={active}
+        balances={balances ?? {}}
+        onClose={() => setAdjustWallet(null)}
       />
 
       {/* Delete Confirmation Modal */}
@@ -254,6 +290,7 @@ function WalletCard({
   onEdit,
   onArchive,
   onDelete,
+  onAdjust,
 }: {
   wallet: Wallet;
   balance: number;
@@ -261,6 +298,7 @@ function WalletCard({
   onEdit: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onAdjust: () => void;
 }) {
   return (
     <div>
@@ -273,6 +311,15 @@ function WalletCard({
           <DynIcon name={wallet.icon} className="size-5" />
         </span>
         <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onAdjust}
+            aria-label="Setel saldo real"
+            className="text-white hover:bg-white/15 hover:text-white"
+          >
+            <SlidersHorizontal className="size-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -471,6 +518,100 @@ function WalletSheet({
             ))}
           </div>
         </Field>
+      </div>
+    </Sheet>
+  );
+}
+
+function AdjustBalanceSheet({
+  open,
+  wallet,
+  wallets,
+  balances,
+  onClose,
+}: {
+  open: boolean;
+  /** Wallet yang disetel; `null` → pilih dari dropdown (dipakai dari BalanceCard). */
+  wallet: Wallet | null;
+  wallets: Wallet[];
+  balances: Record<string, number>;
+  onClose: () => void;
+}) {
+  const toast = useToast();
+  const [walletId, setWalletId] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setWalletId(wallet?.id ?? wallets[0]?.id ?? "");
+    setAmount("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const target = wallets.find((w) => w.id === walletId) ?? null;
+
+  async function save() {
+    if (!target) return;
+    const value = parseAmount(amount);
+    setSaving(true);
+    try {
+      await adjustWalletBalance(target.id, value);
+      toast(`Saldo dompet disesuaikan ke ${formatIDR(value)}`, "success");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Setel Saldo Real"
+      description="Samain saldo dompet sama uang yang beneran ada"
+      footer={
+        <div className="flex gap-2">
+          <Button variant="outline" size="lg" onClick={onClose}>
+            Batal
+          </Button>
+          <Button className="flex-1" size="lg" onClick={save} disabled={!target} loading={saving}>
+            Simpan
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {!wallet ? (
+          <Field label="Dompet">
+            <Select value={walletId} onChange={(e) => setWalletId(e.target.value)}>
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+        <Field label="Saldo real sekarang" hint="Ketik nominal uang yang beneran ada">
+          <Input
+            inputMode="numeric"
+            value={amount}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "");
+              const formatted = digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+              setAmount(formatted);
+            }}
+            placeholder="cth. 539.564"
+            autoFocus
+          />
+        </Field>
+        {target ? (
+          <p className="text-xs text-muted">
+            Saldo tercatat:{" "}
+            <span className="num font-medium text-fg">{formatIDR(balances[target.id] ?? 0)}</span>
+          </p>
+        ) : null}
       </div>
     </Sheet>
   );
