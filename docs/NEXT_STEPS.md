@@ -10,7 +10,7 @@
 | Domain `trakingduit.my.id` | ✅ LIVE di Vercel |
 | Vercel project | ✅ `trackingduit` (projectId `prj_kd6D7S6M55Tk0Extkq6r909OVFfB`) |
 | Version app | `v1.17.2` (package.json + menu page) |
-| Commit terakhir | `7cd6740` — fix(tradu): strip markdown bold/italic/code + escape backtick di system prompt |
+| Commit terakhir | `867b4e8` — fix(premium): consume Tradu quota hanya sukses, disable free-card CTA, pro soft-cap messaging |
 | Git working tree | ✅ Bersih, pushed ke `origin/main` |
 
 ## 🧠 AI (Tradu & OCR) — Infrastruktur
@@ -37,6 +37,31 @@
 
 ## ✅ Perubahan session ini
 
+### 🏅 FITUR PREMIUM / SUBSCRIPTION (session terbaru)
+
+**3 tier: Standar (Rp0) / Premium (Rp15rb) / Pro (Rp45rb)**
+
+| Tier | Tradu/hari | Scan/hari | Benefit kunci |
+|---|---|---|---|
+| Standar (free) | 3 | 5 | Fitur dasar lengkap, sync cloud |
+| Premium (15rb) | 30 | 15 | Badge streak, ekspor & unduh backup |
+| Pro (45rb) | unlimited (soft cap 200) | unlimited (soft cap 100) | Tema warna premium, badge eksklusif |
+
+**File baru:**
+- `src/lib/subscription.ts` — config tier + kuota harian (Dexie settings, auto-reset tiap hari via key tanggal) + hook `useSubscription()`
+- `src/app/(app)/premium/page.tsx` — halaman pricing 3 kartu (design skill: impeccable + design-taste + ui-ux-pro-max)
+- `src/app/api/premium/activate/route.ts` — aktivasi via kode (mode uji, sebelum payment live)
+
+**Gate kuota:**
+- Tradu: `tradu-chat.tsx` — cek sisa kuota, kalau habis tampilkan CTA upgrade. Kuota dikonsumsi HANYA kalau AI sukses jawab (request gagal tidak buang kuota)
+- OCR: `scan/page.tsx` — cek sisa kuota sebelum scan, redirect ke /premium kalau habis
+- Backup export: `settings/page.tsx` — di-gate untuk member Premium+ (toast + arahkan ke Premium)
+- Menu: badge tier di kartu profil + item "Premium" dengan badge Coba/Aktif
+
+**Kode aktivasi uji:** `PREMIUM-TEST-2026` (env `PREMIUM_ACTIVATION_CODE` di Vercel, berlaku 30 hari/aktivasi, `PREMIUM_TRIAL_DAYS` opsional)
+
+## ✅ Perubahan session ini
+
 1. **Security fix** — hapus hardcoded API key `sk-23a97...` & URL tunnel trycloudflare dari `tradu/route.ts` & `ocr/route.ts` (pindah 100% ke env)
 2. **OCR timeout naik** 30s → 55s (model self-hosted emang lambat)
 3. **OCR parse toleran** — `parseOcrText` selalu balas `raw_text`, structured best-effort → client pake text AI walau structured kosong
@@ -54,7 +79,17 @@
 - Buat gateway API key → kasih tau Buffy → dia set `TRADU_API_KEY` & `OCR_API_KEY` di Vercel
 - **Kenapa penting?** OmniRoute sekarang kebuka publik tanpa auth — siapa pun yang tau URL Funnel bisa manggil AI lo gratis!
 
-### 2. 🎯 Monetisasi — Tradu Premium & OCR limit (diskusi dari user)
+### 2. 💳 Monetisasi — payment live (lanjutan dari fitur premium)
+
+**Fitur premium (3 tier) SUDAH jalan** — tapi aktivasi masih pakai kode manual. Langkah berikut:
+
+1. **Integrasi Midtrans/QRIS** (gravity index: Midtrans paling cocok utk indie + QRIS Indonesia; Xendit alternatif)
+   - Ganti `/api/premium/activate` → webhook Midtrans verify server-to-server
+   - Tabel `subscriptions` di Supabase + kolom tier di `profiles`
+   - Halaman payment dari pricing card
+2. **⚠️ Keamanan aktivasi saat ini:** route tanpa auth & rate limit, kode statis (brute-force-able). Ganti dengan webhook Midtrans sebelum monetisasi live
+3. **⚠️ Tier belum sync antar device** — tier cuma di Dexie lokal. Sebelum live: bawa tier ke profile sync Supabase (allowlist `REMOTE_COLUMNS` + kolom baru) atau tabel `subscriptions`
+4. **Cleanup:** kunci usage harian (`usage.tradu.YYYY-MM-DD`) menumpuk di settings — prune otomatis kalau umur > 30 hari
 
 **Pertanyaan user:** Tradu dijadikan fitur premium/subscription, OCR 5x/hari gratis, premium unlimited.
 
