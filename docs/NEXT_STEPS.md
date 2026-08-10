@@ -1,80 +1,92 @@
 # NEXT_STEPS — TrackingDuit (session continuation)
 
-> Dibuat: 2026-08-10 · Session: setup domain + audit project + fix bug sync.
-> **Cara pakai:** paste isi file ini ke session AI berikutnya (Claude/DeepSeek/Kimi) sebagai konteks awal.
+> Dibuat: 2026-08-11 · Session: tunning Tradu + koneksi AI via OmniRoute Tailscale Funnel + audit bug + monetisasi.
+> **Cara pakai:** paste isi file ini ke session AI berikutnya sebagai konteks awal.
 
 ## 📌 Status terakhir
 
 | Item | Status |
 |---|---|
-| Domain `trakingduit.my.id` (apex + www) | ✅ LIVE di Vercel, SSL valid, redirect ke `/dashboard` |
+| Domain `trakingduit.my.id` | ✅ LIVE di Vercel |
 | Vercel project | ✅ `trackingduit` (projectId `prj_kd6D7S6M55Tk0Extkq6r909OVFfB`) |
-| Supabase Site URL | ✅ `https://trakingduit.my.id` |
-| Supabase Redirect URLs | ✅ `trakingduit.my.id/**`, `www.trakingduit.my.id/**`, `localhost:3000/**` |
-| Migration `avatar_url` | ✅ **BARU DI-APPLY** via Management API (kolom ada di remote) |
-| Bug signOut data loss | ✅ **BARU DI-FIX** di `src/lib/session.tsx` (lokal-only tidak wipe data) |
-| Version app | `1.17.1` (belum di-bump, belum di-deploy, belum di-commit) |
+| Version app | `v1.17.2` (package.json + menu page) |
+| Commit terakhir | `a6a5cad` — feat(tradu): tunning + enrich context + fix TS error + quick prompts Gen Z |
+| Git working tree | ✅ Bersih, pushed ke `origin/main` |
 
-**PENTING — perubahan yang BELUM di-commit/deploy:**
-- `src/lib/session.tsx` — fix signOut (perlu `pnpm build` + deploy + commit)
-- Token PAT Supabase `sbp_4869...` **belum di-revoke** (aman sih, tapi mending di-revoke di dashboard setelah session ini)
+## 🧠 AI (Tradu & OCR) — Infrastruktur
+
+**OmniRoute** via Tailscale Funnel ✅ (stable, public internet):
+- URL: `https://hermesagent.tailcb6f2e.ts.net/v1` (OpenAI-compatible)
+- Proxy: `http://127.0.0.1:20129` (OmniRoute backend di Proxmox)
+
+**Model yg dipake:**
+| Feature | Model | Waktu |
+|---|---|---|
+| Tradu (chat) | `ollama-cloud/gemma4:31b` | ~9-15 detik |
+| OCR (scan struk) | `ollama-cloud/gemma4:31b` | ~11 detik |
+
+**Env Vercel production:**
+| Variable | Value |
+|---|---|
+| `TRADU_API_URL` | `https://hermesagent.tailcb6f2e.ts.net/v1` |
+| `TRADU_API_KEY` | `omniroute-local` **(dummy — ganti kalau auth diaktifkan!)** |
+| `TRADU_MODEL` | `ollama-cloud/gemma4:31b` |
+| `OCR_API_URL` | `https://hermesagent.tailcb6f2e.ts.net/v1` |
+| `OCR_API_KEY` | `omniroute-local` **(dummy)** |
+| `OCR_MODEL` | `ollama-cloud/gemma4:31b` |
+
+## ✅ Perubahan session ini
+
+1. **Security fix** — hapus hardcoded API key `sk-23a97...` & URL tunnel trycloudflare dari `tradu/route.ts` & `ocr/route.ts` (pindah 100% ke env)
+2. **OCR timeout naik** 30s → 55s (model self-hosted emang lambat)
+3. **OCR parse toleran** — `parseOcrText` selalu balas `raw_text`, structured best-effort → client pake text AI walau structured kosong
+4. **Tradu strip "Thinking Process"** — `stripThinkingProcess()` di server otomatis buang blok reasoning
+5. **Tradu tuning sistem prompt** — framework 4 langkah: hitung angka → deteks anomali → rekomendasi spesifik → akui keterbatasan data
+6. **Rich financial context di client** — `avgDailySpend`, `projectedMonthEnd`, `lastMonthExpense` + delta, `budgetUsage` (%, `upcomingBills` (7 hari), `savingsRate`
+7. **Quick Prompts Gen Z** — "Duitku aman gak bulan ini?", "Kategori mana yang paling bikin tekor?", "Kasih tips hemat minggu ini dong", "Cara capai target nabung gimana?"
+8. **Fix 4 bug dari audit** — backup/restore debts+salaries, resetAll salaries, nextDueDate monthly clamp, budget 0 guard
+
+## ⚠️ Yang PERLU dilanjut session depan
+
+### 1. 🔒 Aktifkan auth di OmniRoute (prioritas!)
+- Buka `https://hermesagent.tailcb6f2e.ts.net/home` atau `http://100.106.72.4:20129/home`
+- Cari menu Settings / Access & Security / API Keys
+- Buat gateway API key → kasih tau Buffy → dia set `TRADU_API_KEY` & `OCR_API_KEY` di Vercel
+- **Kenapa penting?** OmniRoute sekarang kebuka publik tanpa auth — siapa pun yang tau URL Funnel bisa manggil AI lo gratis!
+
+### 2. 🎯 Monetisasi — Tradu Premium & OCR limit (diskusi dari user)
+
+**Pertanyaan user:** Tradu dijadikan fitur premium/subscription, OCR 5x/hari gratis, premium unlimited.
+
+**Rekomendasi dari Buffy:** (lihat konten lengkap di session sebelumnya — 3 tier: Free / Premium Basic / Premium Pro, implementasi pakai Supabase custom claims + middleware cek)
+
+### 3. 🔧 M3 (minimax-m3) model
+- `oc/minimax-m3` & `opencode/minimax-m3` gagal 401 — butuh API key provider sendiri di dashboard OmniRoute
+- Kalau lo tambahin kredensial provider M3, ganti `TRADU_MODEL` → `oc/minimax-m3` (lebih cepat & akurat dari Gemma)
+
+### 4. 🔄 Rename `traking` → `tracking`
+- Kode UI: `src/app/login/page.tsx:85` (alt="TrakingDuit")
+- `src/components/layout/app-shell.tsx:180`
+- `src/app/api/tradu/route.ts:50` (prompt: "Tradu (Trakingduit)")
+- GitHub repo name belum di-rename
+- **JANGAN ubah:** `lib/db.ts` DB name `trackingduit`, `lib/import.ts` app key `trackingduit`
+
+### 5. 🔧 Quick fixes pending
+- Rate limit in-memory → bisa di-bypas multi-instance Vercel. Butuh Upstash/Redis untuk produksi serius
+- Test suite: 0 file test. Minimal untuk `src/lib/analytics.ts` (kalkulasi saldo/budget)
+
+## 🚀 Deploy flow
+
+```bash
+pnpm build && npx tsc --noEmit && vercel --prod --yes
+git add -A && git commit -m "..." && git push origin main
+```
 
 ## 🔑 Akses penting
 
 - **Git remote:** `https://github.com/annnpiwww/trakingduit.git` (branch `main`)
-- **Vercel CLI:** login sebagai `anpikeke-6896`, project scope `hermessd`
-- **Supabase project:** `oeayigvhngzfimvbmyxg` (nama `trackingduit`)
-- **Supabase CLI lokal:** login-role 403 → jangan andalkan `supabase db push`; pakai **Management API**:
-  ```bash
-  # Query SQL ke database remote (pakai file biar aman dari escaping):
-  curl -s -X POST -H "Authorization: Bearer <PAT>" -H 'Content-Type: application/json' \
-    --data-binary @payload.json "https://api.supabase.com/v1/projects/oeayigvhngzfimvbmyxg/database/query"
-  # payload.json: {"query":"SELECT ..."}
-  # Config auth: GET/PATCH https://api.supabase.com/v1/projects/<ref>/config/auth
-  ```
-- **Supabase Auth config** sudah benar: `mailer_autoconfirm: true` (email confirm mati), signup jalan.
-
-## ⚠️ Bug yang BELUM di-fix (dari HANDOFF)
-
-1. **SignOut antar akun cloud:** `signOut` wipe data lokal kalau sync sukses → akun lain di browser sama bisa lihat data lama. Sudah difix SEBAGIAN (wipe cuma kalau `cloudUser && synced`), tapi **perlu test manual**: login cloud A → signout → login cloud B → pastikan data B bersih.
-2. **Domain naming `trakingduit` vs `trackingduit`:** kode UI masih ada `alt="TrakingDuit"` di `src/app/login/page.tsx:85` dan `src/components/layout/app-shell.tsx:180`, plus prompt AI `src/app/api/tradu/route.ts:50` → "Tradu (Trakingduit)". Belum diganti.
-3. **GitHub repo masih bernama `trakingduit`** — belum di-rename.
-
-## 🎯 Prioritas berikutnya (rekomendasi)
-
-1. **Commit + deploy fix signOut** (langkah di bawah)
-2. **Ganti `Traking` → `Tracking`** di 3 file kode (login, app-shell, tradu route) + `package.json` name + `scripts/auto-sync.sh` — HATI-HATI: `lib/db.ts` pakai `super("trackingduit")` (DB name, JANGAN diubah), `lib/import.ts` cek `app: "trackingduit"` (JANGAN diubah).
-3. **Test suite** — 0 file test sekarang. Mulai dari kalkulasi saldo/budget di `src/lib/analytics.ts`.
-4. **Sentry/monitoring** — belum ada error tracking.
-5. **Push notification** — PRD gap, butuh Web Push + VAPID.
-
-## 🚀 Deploy flow (pakai skill `updateversion`)
-
-```bash
-# 1. Git profile valid (wajib, kalau tidak Vercel block deploy):
-git config user.email "anpikeke@gmail.com"
-git config user.name "annnpii"
-# 2. Bump versi: package.json + src/app/(app)/menu/page.tsx (baris "TrackingDuit vX.Y.Z")
-# 3. Build & typecheck:
-pnpm build && npx tsc --noEmit
-# 4. Deploy produksi:
-vercel --prod --yes
-# 5. Commit + push:
-git add -A && git commit -m "..." && git push origin main
-```
-
-## 📁 Struktur kunci
-
-- `src/lib/session.tsx` — auth lokal/cloud, signIn/signOut, profil sync
-- `src/lib/sync/supabase-sync.ts` — sinkron dua arah, LWW `updated_at`
-- `src/lib/db.ts` — Dexie schema (JANGAN ubah nama DB `trackingduit`)
-- `src/lib/analytics.ts` — agregasi murni (dipakai UI + API)
-- `supabase/migrations/` — SQL yang perlu di-apply manual / via API
-- `docs/HANDOFF.md` — konteks lengkap sesi sebelumnya (baca juga ini)
-
-## ✅ Sudah diverifikasi session ini
-
-- `trakingduit.my.id` apex → 200, www → 307→dashboard
-- Supabase REST health: 401 (normal, butuh auth), `/auth/v1/settings` OK
-- Migration avatar_url: kolom terverifikasi di `information_schema`
-- Env Vercel: `NEXT_PUBLIC_SUPABASE_URL` + `_ANON_KEY` ada di Prod/Preview/Dev
+- **Vercel CLI:** login `anpikeke-6896`, scope `hermessd`
+- **Supabase project:** `oeayigvhngzfimvbmyxg`
+- **OmniRoute (via Tailscale Funnel):** `https://hermesagent.tailcb6f2e.ts.net`
+- **OmniRoute (lokal tailnet):** `http://100.106.72.4:20129`
+- **PAT Supabase `sbp_4869...`** — **revoke di dashboard!** Udah dipake buat migration.

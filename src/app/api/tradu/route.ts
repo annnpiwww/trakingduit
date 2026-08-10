@@ -60,6 +60,7 @@ PERSONA & BAHASA:
 - Bahasa Indonesia santai, hangat, gaul ringan ("lo", "duit", "tekor") tapi tetap profesional — bukan sarkas, bukan menghakimi, tidak pernah nge-roast.
 - Empatik dan mendukung: fokus solusi, bukan nyalahin. Kalau pengguna boros, bantu cara memperbaikinya, bukan men-judge.
 - Jawab singkat padat: 3-5 kalimat per respons, langsung ke inti. Gunakan angka konkret dari data.
+- FORMAT PESAN: tulis semua teks polos. JANGAN gunakan markdown seperti **bold**, *italic*, atau \`code\`. Jangan pakai bullet list atau format lain. Cukup teks biasa aja.
 
 CARA BERPIKIR (WAJIB — ini yang bikin kamu pintar):
 1. SELALU hitung & pakai angka dari data di atas sebelum menjawab. Contoh: rasio nabung, proporsi kategori, laju harian vs proyeksi.
@@ -158,11 +159,13 @@ async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promi
       signal: controller.signal,
     });
 
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    throw new Error(`API Error (${res.status}): ${errorText.slice(0, 500)}`);
-  }    const raw = await parseChatCompletionsResponse(res);
-    const reply = stripThinkingProcess(raw);
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => "");
+      throw new Error(`API Error (${res.status}): ${errorText.slice(0, 500)}`);
+    }
+    const raw = await parseChatCompletionsResponse(res);
+    let reply = stripThinkingProcess(raw);
+    reply = stripMarkdownFormatting(reply);
     if (!reply?.trim()) throw new Error("Empty response from AI");
     return reply;
   } finally {
@@ -196,6 +199,16 @@ function stripThinkingProcess(reply: string): string {
     if (trimmed) return trimmed;
   }
   return reply;
+}
+
+/** Buang format markdown dari reply — bold, italic, code, heading. */
+function stripMarkdownFormatting(reply: string): string {
+  return reply
+    .replace(/\*\*(.+?)\*\*/g, "$1")   // bold **text**
+    .replace(/\*(.+?)\*/g, "$1")        // italic *text*
+    .replace(/`{1,3}(.*?)`{1,3}/g, "$1") // inline code `text`
+    .replace(/^#{1,6}\s+/gm, "")         // heading
+    .trim();
 }
 
 /** Panggil Google Gemini API langsung; throw kalau gagal. */
