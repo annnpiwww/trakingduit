@@ -48,6 +48,58 @@
   --shadow-pop: 0 4px 12px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.5);
 }
 
+/* ---- Tema warna premium (khusus tier Pro, diatur via data-accent) ---- */
+:root[data-accent="violet"] {
+  --brand: #7c3aed;
+  --brand-fg: #ffffff;
+  --brand-grad: linear-gradient(135deg, #5b21b6, #8b5cf6);
+}
+[data-theme="dark"][data-accent="violet"] {
+  --brand: #a78bfa;
+  --brand-fg: #1e1233;
+  --brand-grad: linear-gradient(135deg, #4c1d95, #7c3aed);
+}
+:root[data-accent="ocean"] {
+  --brand: #0d9488;
+  --brand-fg: #ffffff;
+  --brand-grad: linear-gradient(135deg, #115e59, #14b8a6);
+}
+[data-theme="dark"][data-accent="ocean"] {
+  --brand: #2dd4bf;
+  --brand-fg: #04211d;
+  --brand-grad: linear-gradient(135deg, #134e4a, #0d9488);
+}
+:root[data-accent="sunset"] {
+  --brand: #ea580c;
+  --brand-fg: #ffffff;
+  --brand-grad: linear-gradient(135deg, #9a3412, #f97316);
+}
+[data-theme="dark"][data-accent="sunset"] {
+  --brand: #fb923c;
+  --brand-fg: #2b0f00;
+  --brand-grad: linear-gradient(135deg, #7c2d12, #ea580c);
+}
+:root[data-accent="rose"] {
+  --brand: #db2777;
+  --brand-fg: #ffffff;
+  --brand-grad: linear-gradient(135deg, #9d174d, #ec4899);
+}
+[data-theme="dark"][data-accent="rose"] {
+  --brand: #f472b6;
+  --brand-fg: #2b0a18;
+  --brand-grad: linear-gradient(135deg, #831843, #db2777);
+}
+:root[data-accent="forest"] {
+  --brand: #16a34a;
+  --brand-fg: #ffffff;
+  --brand-grad: linear-gradient(135deg, #166534, #22c55e);
+}
+[data-theme="dark"][data-accent="forest"] {
+  --brand: #4ade80;
+  --brand-fg: #051d0d;
+  --brand-grad: linear-gradient(135deg, #14532d, #16a34a);
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

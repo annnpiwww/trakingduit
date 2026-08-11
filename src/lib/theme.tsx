@@ -3,31 +3,42 @@
 import * as React from "react";
 
 export type Theme = "light" | "dark";
+/** Tema warna premium (khusus tier Pro). Warna diatur lewat CSS data-accent. */
+export type Accent = "default" | "violet" | "ocean" | "sunset" | "rose" | "forest";
+
 const KEY = "td.theme";
+const ACCENT_KEY = "td.accent";
 
 interface ThemeValue {
   theme: Theme;
   setTheme: (t: Theme) => void;
   toggle: () => void;
+  accent: Accent;
+  setAccent: (a: Accent) => void;
 }
 
 const Ctx = React.createContext<ThemeValue>({
   theme: "dark",
   setTheme: () => {},
   toggle: () => {},
+  accent: "default",
+  setAccent: () => {},
 });
 
 export const useTheme = () => React.useContext(Ctx);
 
 /** Runs before paint so the first frame already has the right palette. */
-export const themeScript = `(function(){try{var t=localStorage.getItem('${KEY}');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+export const themeScript = `(function(){try{var t=localStorage.getItem('${KEY}');if(!t){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);var a=localStorage.getItem('${ACCENT_KEY}');if(a&&a!=='default'){document.documentElement.setAttribute('data-accent',a);}}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = React.useState<Theme>("dark");
+  const [accent, setAccentState] = React.useState<Accent>("default");
 
   React.useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as Theme) || "dark";
     setThemeState(current);
+    const acc = (document.documentElement.getAttribute("data-accent") as Accent) || "default";
+    setAccentState(acc);
   }, []);
 
   const setTheme = React.useCallback((t: Theme) => {
@@ -41,5 +52,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [theme, setTheme],
   );
 
-  return <Ctx.Provider value={{ theme, setTheme, toggle }}>{children}</Ctx.Provider>;
+  const setAccent = React.useCallback((a: Accent) => {
+    if (a === "default") document.documentElement.removeAttribute("data-accent");
+    else document.documentElement.setAttribute("data-accent", a);
+    localStorage.setItem(ACCENT_KEY, a);
+    setAccentState(a);
+  }, []);
+
+  return (
+    <Ctx.Provider value={{ theme, setTheme, toggle, accent, setAccent }}>
+      {children}
+    </Ctx.Provider>
+  );
 }

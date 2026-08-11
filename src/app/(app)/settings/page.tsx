@@ -3,13 +3,17 @@
 import * as React from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
+  Check,
   ChevronRight,
   CloudUpload,
+  Crown,
   Database,
   FileSpreadsheet,
   FileUp,
+  Lock,
   LockKeyhole,
   LogOut,
+  Palette,
   Plus,
   RefreshCcwDot,
   Save,
@@ -24,7 +28,7 @@ import { db, resetAll } from "@/lib/db";
 import { createCategory, deleteCategory } from "@/lib/repo";
 import { useSession } from "@/lib/session";
 import { useSubscription } from "@/lib/subscription";
-import { useTheme } from "@/lib/theme";
+import { useTheme, type Accent } from "@/lib/theme";
 import { lastSheetSync, syncGoogleSheet } from "@/lib/sync/sheets";
 import { lastSupabaseSync, syncSupabase } from "@/lib/sync/supabase-sync";
 import { useAutoSync, type AutoSyncState } from "@/lib/sync/auto-sync";
@@ -63,11 +67,27 @@ const AUTO_SYNC_BADGE: Record<
   error: { label: "Gagal sync", tone: "expense" },
 };
 
+/** Tema warna premium — swatch light/dark mengikuti palette di globals.css. */
+const ACCENT_OPTIONS: { id: Accent; name: string; light: string; dark: string }[] = [
+  { id: "default", name: "Biru", light: "#0060af", dark: "#3b9bff" },
+  { id: "violet", name: "Ungu", light: "#7c3aed", dark: "#a78bfa" },
+  { id: "ocean", name: "Laut", light: "#0d9488", dark: "#2dd4bf" },
+  { id: "sunset", name: "Senja", light: "#ea580c", dark: "#fb923c" },
+  { id: "rose", name: "Mawar", light: "#db2777", dark: "#f472b6" },
+  { id: "forest", name: "Hutan", light: "#16a34a", dark: "#4ade80" },
+];
+
 export default function SettingsPage() {
   const toast = useToast();
   const { profile, updateProfile, signOut, supabaseEnabled, lock } = useSession();
   const { tier } = useSubscription();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, accent, setAccent } = useTheme();
+  const isPro = tier === "pro";
+
+  // Tema warna premium cuma buat Pro — kalau tier turun, balikin ke default.
+  React.useEffect(() => {
+    if (!isPro && accent !== "default") setAccent("default");
+  }, [isPro, accent, setAccent]);
 
   const [name, setName] = React.useState("");
   const [displayName, setDisplayName] = React.useState("");
@@ -262,6 +282,65 @@ export default function SettingsPage() {
             <SunMoon className="size-3.5" />
             Preferensi disimpan di perangkat ini.
           </p>
+
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2.5 flex items-center gap-1.5 text-sm font-medium">
+              <Palette className="size-4 text-brand" />
+              Tema warna premium
+              {!isPro ? (
+                <Badge tone="warn">
+                  <Crown className="size-3" /> Pro
+                </Badge>
+              ) : null}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {ACCENT_OPTIONS.map((a) => {
+                const locked = !isPro && a.id !== "default";
+                const selected = accent === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    disabled={locked}
+                    aria-label={`Tema ${a.name}${locked ? " (khusus Pro)" : ""}`}
+                    onClick={() => setAccent(a.id)}
+                    className={cn(
+                      "group flex flex-col items-center gap-1.5",
+                      locked && "cursor-not-allowed",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-11 place-items-center rounded-full border-2 transition-all",
+                        selected
+                          ? "scale-110 border-fg shadow-sm ring-2 ring-brand/30"
+                          : "border-transparent hover:scale-105",
+                        locked && "opacity-40",
+                      )}
+                      style={{ background: `linear-gradient(135deg, ${a.light}, ${a.dark})` }}
+                    >
+                      {locked ? (
+                        <Lock className="size-4 text-white/90" />
+                      ) : selected ? (
+                        <Check className="size-4 text-white drop-shadow" />
+                      ) : null}
+                    </span>
+                    <span className="text-[10px] text-muted">{a.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {!isPro ? (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+                <Crown className="size-3.5 text-warn" />
+                Khusus member Pro. Upgrade di{" "}
+                <Link href="/premium" className="font-medium text-brand underline-offset-2 hover:underline">
+                  Menu › Premium
+                </Link>
+                .
+              </p>
+            ) : null}
+          </div>
         </div>
       </Card>
 

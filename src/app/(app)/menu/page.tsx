@@ -23,6 +23,7 @@ import { InstallSheet } from "@/components/install/install-sheet";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
+  { href: "/premium", label: "Premium", desc: "Buka semua fitur AI tanpa batas", icon: Crown },
   { href: "/scan", label: "Scan Nota", desc: "Foto struk, auto-catat jadi transaksi", icon: ScanLine },
   { href: "/wallets", label: "Dompet", desc: "Atur dompet, bank, & e-wallet kamu", icon: Wallet },
   { href: "/debts", label: "Utang Piutang", desc: "Catat utang & piutang, biar nggak lupa nagih", icon: HandCoins },
@@ -30,7 +31,6 @@ const ITEMS = [
   { href: "/goals", label: "Target Nabung", desc: "Pantau progres menabung", icon: Target },
   { href: "/bills", label: "Tagihan & Cicilan", desc: "Pengingat jatuh tempo", icon: CalendarClock },
   { href: "/analytics", label: "Analisis", desc: "Cek tren pengeluaran kamu", icon: ChartPie },
-  { href: "/premium", label: "Premium", desc: "Buka semua fitur AI tanpa batas", icon: Crown },
   { href: "/settings", label: "Pengaturan", desc: "Sinkron, data, tema, PIN", icon: Settings },
 ];
 
@@ -66,9 +66,15 @@ export default function MenuPage() {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {tier !== "free" ? (
-            <Badge tone={tier === "pro" ? "warn" : "brand"}>
-              <Crown className="size-3" /> {tier === "pro" ? "Pro" : "Premium"}
-            </Badge>
+            tier === "pro" ? (
+              <span className="flex items-center gap-1 rounded-full bg-[linear-gradient(90deg,#f59e0b,#f97316)] px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm">
+                <Crown className="size-3" /> PRO
+              </span>
+            ) : (
+              <Badge tone="brand">
+                <Crown className="size-3" /> Premium
+              </Badge>
+            )
           ) : null}
           <ChevronRight className="size-4 text-muted" />
         </div>
@@ -130,7 +136,7 @@ export default function MenuPage() {
       </Button>
 
       <p className="text-center text-xs text-muted">
-        TrackingDuit v1.18.0
+        TrackingDuit v1.19.0
       </p>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
@@ -142,6 +148,7 @@ export default function MenuPage() {
 function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const { profile, updateProfile } = useSession();
+  const { tier } = useSubscription();
   const [name, setName] = React.useState("");
   const [color, setColor] = React.useState("#0f9d76");
   const [avatarUrl, setAvatarUrl] = React.useState("");
@@ -252,6 +259,17 @@ function ProfileSheet({ open, onClose }: { open: boolean; onClose: () => void })
               </Button>
             )}
           </div>
+          {tier !== "free" ? (
+            tier === "pro" ? (
+              <span className="flex items-center gap-1 rounded-full bg-[linear-gradient(90deg,#f59e0b,#f97316)] px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-white shadow-sm">
+                <Crown className="size-3.5" /> PRO
+              </span>
+            ) : (
+              <Badge tone="brand">
+                <Crown className="size-3" /> Premium
+              </Badge>
+            )
+          ) : null}
         </div>
 
         <Field label="Nama Lengkap">
