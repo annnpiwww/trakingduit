@@ -11,9 +11,24 @@ import { NextRequest, NextResponse } from "next/server";
  * honey: kode statis = rawan bocor; ganti dengan webhook Midtrans sebelum
  * monetisasi live (trigger: fitur payment masuk).
  */
+
+// Kode promo statis (mode uji): TRAKINGPRO → Pro 3 hari, case-insensitive.
+// honey: hardcoded = butuh redeploy buat ganti; pindahin ke env/DB kalo promo
+// mulai ganti-ganti (trigger: lebih dari 1 promo atau promo berbayar).
+const PROMO_CODES: Record<string, { tier: "pro"; days: number }> = {
+  trakingpro: { tier: "pro", days: 3 },
+};
+
 export async function POST(req: NextRequest) {
   try {
     const { code, tier } = (await req.json()) as { code?: string; tier?: string };
+
+    // Promo dicek duluan biar kode promo bisa override tier yang diklik user.
+    const promo = PROMO_CODES[(code ?? "").trim().toLowerCase()];
+    if (promo) {
+      return NextResponse.json({ ok: true, tier: promo.tier, days: promo.days });
+    }
+
     const expected = process.env.PREMIUM_ACTIVATION_CODE;
     if (!expected) {
       return NextResponse.json(

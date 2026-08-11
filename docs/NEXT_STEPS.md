@@ -9,7 +9,7 @@
 |---|---|
 | Domain `trakingduit.my.id` | ✅ LIVE di Vercel |
 | Vercel project | ✅ `trackingduit` (projectId `prj_kd6D7S6M55Tk0Extkq6r909OVFfB`) |
-| Version app | `v1.17.2` (package.json + menu page) |
+| Version app | `v1.18.0` (package.json + menu page) |
 | Commit terakhir | `867b4e8` — fix(premium): consume Tradu quota hanya sukses, disable free-card CTA, pro soft-cap messaging |
 | Git working tree | ✅ Bersih, pushed ke `origin/main` |
 

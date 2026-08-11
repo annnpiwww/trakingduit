@@ -24,6 +24,7 @@ const BENEFIT_ICON: Record<string, React.ComponentType<{ className?: string }>> 
   Scan: ScanLine,
   Badge: Flame,
   Unduh: BadgeCheck,
+  Download: BadgeCheck,
   Tema: Palette,
   Tanpa: InfinityIcon,
 };
@@ -62,20 +63,20 @@ export default function PremiumPage() {
       {/* Header */}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold tracking-wide text-accent uppercase">
-          Naikkan level TrackingDuit
+          Naikin level TrackingDuit
         </p>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Fitur AI, tanpa batas. Pilih level kamu.
+          Fitur AI, tanpa batas. Pilih level lu.
         </h1>
         <p className="max-w-md text-xs text-muted sm:text-sm">
-          Mulai dari gratis. Upgrade kalau kamu butuh Tradu & scan lebih lega.
+          Mulai gratis. Upgrade kalo Tradu & scan lu udah mulai sempit.
         </p>
       </div>
 
       {/* Kuota hari ini */}
       <Card className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Kuota hari ini</p>
+          <p className="text-sm font-semibold">Kuota lu hari ini</p>
           {tier !== "free" ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-medium text-brand">
               <Crown className="size-3" />
@@ -129,7 +130,7 @@ export default function PremiumPage() {
 
       {/* Catatan kecil */}
       <p className="text-center text-[11px] text-muted">
-        Soft cap berlaku untuk paket unlimited (Tradu 200/hari, scan 100/hari) biar adil buat semua.
+        Soft cap cuma buat paket unlimited (Tradu 200/hari, scan 100/hari) biar adil buat semua.
       </p>
 
       <ActivationSheet
@@ -331,11 +332,13 @@ function ActivationSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim(), tier: targetTier }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string; days?: number };
+      const data = (await res.json()) as { ok?: boolean; error?: string; tier?: TierId; days?: number };
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Gagal aktivasi");
       }
-      await activateTier(targetTier, data.days ?? 30);
+      // Tier dipakai dari balikan server: kode promo (mis. TRAKINGPRO → Pro) bisa
+      // override tier yang diklik user.
+      await activateTier(data.tier ?? targetTier, data.days ?? 30);
       onActivated(targetTier);
       onClose();
     } catch (err) {
@@ -350,7 +353,7 @@ function ActivationSheet({
       open={open}
       onClose={onClose}
       title={`Aktifkan ${cfg.name}`}
-      description={`${formatIDR(cfg.price)}/bulan · berlaku 30 hari per aktivasi`}
+      description={`${formatIDR(cfg.price)}/bulan · aktif 30 hari tiap aktivasi`}
       size="lg"
       footer={
         <Button
@@ -360,13 +363,13 @@ function ActivationSheet({
           disabled={!code.trim() || busy}
           loading={busy}
         >
-          <Crown className="size-4" /> Aktifkan sekarang
+          <Crown className="size-4" /> Aktifin sekarang
         </Button>
       }
     >
       <div className="space-y-4">
         <div className="rounded-xl border border-border bg-surface-2/60 p-4">
-          <p className="mb-2 text-xs font-medium text-muted">Yang kamu dapet:</p>
+          <p className="mb-2 text-xs font-medium text-muted">Yang lu dapet:</p>
           <ul className="space-y-1.5">
             {cfg.benefits.map((b) => (
               <li key={b} className="flex items-start gap-2 text-[13px]">
@@ -379,12 +382,12 @@ function ActivationSheet({
 
         <Field
           label="Kode aktivasi"
-          hint="Mode uji sebelum pembayaran live. Minta kode ke admin TrackingDuit."
+          hint="Masih mode uji sebelum payment live. Minta kode ke admin TrackingDuit."
         >
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Masukkan kode aktivasi"
+            placeholder="Ketik kode aktivasi lu"
             autoCapitalize="off"
             autoCorrect="off"
             onKeyDown={(e) => e.key === "Enter" && submit()}
@@ -392,8 +395,8 @@ function ActivationSheet({
         </Field>
 
         <p className="text-[11px] leading-relaxed text-muted">
-          Pembayaran QRIS/Midtrans lagi disiapkan. Untuk sekarang, premium diaktifkan lewat kode
-          yang dibagikan admin.
+          Payment QRIS/Midtrans lagi disiapin. Buat sekarang, premium diaktifin lewat kode
+          dari admin.
         </p>
       </div>
     </Sheet>
