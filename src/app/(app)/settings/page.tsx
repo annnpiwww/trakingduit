@@ -71,10 +71,10 @@ const AUTO_SYNC_BADGE: Record<
 const ACCENT_OPTIONS: { id: Accent; name: string; light: string; dark: string }[] = [
   { id: "default", name: "Biru", light: "#0060af", dark: "#3b9bff" },
   { id: "violet", name: "Ungu", light: "#7c3aed", dark: "#a78bfa" },
-  { id: "ocean", name: "Laut", light: "#0d9488", dark: "#2dd4bf" },
-  { id: "sunset", name: "Senja", light: "#ea580c", dark: "#fb923c" },
+  { id: "ocean", name: "Laut", light: "#0f766e", dark: "#2dd4bf" },
+  { id: "sunset", name: "Senja", light: "#c2410c", dark: "#fb923c" },
   { id: "rose", name: "Mawar", light: "#db2777", dark: "#f472b6" },
-  { id: "forest", name: "Hutan", light: "#16a34a", dark: "#4ade80" },
+  { id: "forest", name: "Hutan", light: "#15803d", dark: "#4ade80" },
 ];
 
 export default function SettingsPage() {

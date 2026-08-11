@@ -60,7 +60,7 @@
   --brand-grad: linear-gradient(135deg, #4c1d95, #7c3aed);
 }
 :root[data-accent="ocean"] {
-  --brand: #0d9488;
+  --brand: #0f766e;
   --brand-fg: #ffffff;
   --brand-grad: linear-gradient(135deg, #115e59, #14b8a6);
 }
@@ -70,7 +70,7 @@
   --brand-grad: linear-gradient(135deg, #134e4a, #0d9488);
 }
 :root[data-accent="sunset"] {
-  --brand: #ea580c;
+  --brand: #c2410c;
   --brand-fg: #ffffff;
   --brand-grad: linear-gradient(135deg, #9a3412, #f97316);
 }
@@ -90,7 +90,7 @@
   --brand-grad: linear-gradient(135deg, #831843, #db2777);
 }
 :root[data-accent="forest"] {
-  --brand: #16a34a;
+  --brand: #15803d;
   --brand-fg: #ffffff;
   --brand-grad: linear-gradient(135deg, #166534, #22c55e);
 }

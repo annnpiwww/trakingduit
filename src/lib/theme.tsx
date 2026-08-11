@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { getTier } from "./subscription";
 
 export type Theme = "light" | "dark";
 /** Tema warna premium (khusus tier Pro). Warna diatur lewat CSS data-accent. */
@@ -58,6 +59,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(ACCENT_KEY, a);
     setAccentState(a);
   }, []);
+
+  // Tema warna premium cuma buat Pro. Enforce di root biar user free/plus yang
+  // nyimpen accent lama (mis. dari masa Pro) nggak kebagian palette premium
+  // di seluruh app. Reset reaktif saat tier turun tetap ada di halaman Settings.
+  React.useEffect(() => {
+    void getTier().then((t) => {
+      if (t !== "pro") setAccent("default");
+    });
+  }, [setAccent]);
 
   return (
     <Ctx.Provider value={{ theme, setTheme, toggle, accent, setAccent }}>
