@@ -6,6 +6,7 @@ import type { UserProfile } from "./types";
 import { hashPin, newId, nowISO } from "./utils";
 import { isSupabaseConfigured, supabaseBrowser } from "./supabase";
 import { fetchCloudProfile, onProfileSynced, syncSupabase } from "./sync/supabase-sync";
+import { syncQuotaFromUser } from "./subscription";
 
 const PROFILE_ID = "me";
 const UNLOCK_KEY = "td.unlocked";
@@ -144,6 +145,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         supabase_user_id: uid,
       };
       await db().profile.put(row);
+
+      if (data.user) {
+        await syncQuotaFromUser(data.user);
+      }
 
       // Blok login agar menarik data dari server terlebih dahulu
       if (mode === "login") {
