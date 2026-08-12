@@ -132,7 +132,7 @@ export default function DebtsPage() {
           </div>
 
           {filtered.length ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
               {filtered.map((d) => {
                 const isPayable = d.type === "payable";
                 const remaining = Math.max(0, d.amount - d.paid_amount);

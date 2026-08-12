@@ -233,7 +233,7 @@ export default function BillsPage() {
           </div>
 
           {filteredBills.length ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               {filteredBills.map((b) => {
                 const days = daysBetween(today, b.due_date);
                 const late = days < 0 && !b.archived;

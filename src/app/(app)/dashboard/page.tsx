@@ -256,7 +256,7 @@ export default function DashboardPage() {
       </button>
 
       {/* Quick menu */}
-      <section className="grid grid-cols-4 gap-2.5">
+      <section className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
         {QUICK.map((a) => (
           <Link
             key={a.href}

@@ -254,15 +254,22 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
         dirty = pickCategorySurvivors(dirty as never[]) as unknown as Syncable[];
       }
       if (dirty.length) {
-        const { error } = await sb
-          .from(remote)
-          .upsert(dirty.map((r) => toRemote(r, userId, remote)), { onConflict: "id" });
-        if (error) throw new Error(`${remote}: ${error.message}`);
-        pushed += dirty.length;
-        
-        // update local remote_rev so they are marked as synced
-        for (const r of dirty) {
-          await table.update(r.id, { remote_rev: r.updated_at });
+        const CHUNK_SIZE = 100;
+        for (let i = 0; i < dirty.length; i += CHUNK_SIZE) {
+          const chunk = dirty.slice(i, i + CHUNK_SIZE);
+          const { error } = await sb
+            .from(remote)
+            .upsert(chunk.map((r) => toRemote(r, userId, remote)), { onConflict: "id" });
+          if (error) throw new Error(`${remote}: ${error.message}`);
+          pushed += chunk.length;
+
+          // Update local remote_rev conditionally to prevent overwriting newer concurrent edits
+          for (const r of chunk) {
+            const current = await table.get(r.id);
+            if (current && current.updated_at === r.updated_at) {
+              await table.update(r.id, { remote_rev: r.updated_at });
+            }
+          }
         }
       }
 

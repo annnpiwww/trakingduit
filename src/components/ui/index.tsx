@@ -590,7 +590,7 @@ export function BalanceCard({
           </span>
           {chip ? <span className="min-w-0 shrink-0">{chip}</span> : null}
         </div>
-        <p className="num mt-1 text-4xl leading-tight font-bold tracking-tight sm:text-5xl">{value}</p>
+        <p className="num mt-1 text-2xl sm:text-4xl lg:text-5xl leading-tight font-bold tracking-tight truncate">{value}</p>
         {sub ? <div className="mt-2.5 text-xs text-white/80">{sub}</div> : null}
       </div>
     </motion.div>
