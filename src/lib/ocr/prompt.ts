@@ -55,6 +55,16 @@ PENTING:
 
 Respond HANYA dengan JSON, tanpa markdown code fence atau text lain.`;
 
+/** Normalisasi URL endpoint OpenAI-compatible /chat/completions */
+export function normalizeChatEndpoint(baseUrl: string): string {
+  let url = baseUrl.trim().replace(/\/+$/, "");
+  if (url.endsWith("/chat/completions")) return url;
+  if (!url.endsWith("/v1")) {
+    url += "/v1";
+  }
+  return `${url}/chat/completions`;
+}
+
 /** Panggil OpenAI-compatible /chat/completions vision endpoint; throw kalau gagal. */
 export async function ocrViaOpenAI(
   apiUrl: string,
@@ -69,7 +79,7 @@ export async function ocrViaOpenAI(
   try {
     let res: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(`${apiUrl.replace(/\/$/, "")}/chat/completions`, {
+      res = await fetch(normalizeChatEndpoint(apiUrl), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

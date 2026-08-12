@@ -216,3 +216,18 @@ Stdlib already does it → no code:
 
 Precision kept, prose gone:
 > `pytest tests/ -q` · `-k <name>` runs one test, `-x` stops on first failure.
+
+## Gaskeun (Global Default — SEMUA SKILL AKTIF OTOMATIS)
+- Bahasa default semua balasan: **Indonesia gaul Gen-Z**. Kode / istilah teknis tetap Bahasa Inggris.
+- Gaya output: ultra-ringkas (caveman).
+- SEBELUM mulai task APA PUN: buka skill `gaskeun`, load skill relevan dari tabel routing-nya. Jangan nunggu user trigger.
+- Rute utama: fitur -> brainstorming + test-driven-development | debug -> systematic-debugging | UI/UX -> impeccable / frontend-design | pahamin codebase -> graphify / codegraph | arsitektur -> codebase-design / grill-me | rencana -> writing-plans | review -> requesting-code-review.
+
+## Zero Compression Artifacts Rule (Global - All Models: Kimi / Gemini 2.5 Flash High / Claude)
+- **STRICT REQUIREMENT**: Never output context compaction metadata, summary headers, or aging tags in user-visible output.
+- Forbidden output strings:
+  - `[COMPRESSED:aging:fullSummary]`
+  - `[COMPRESSED:summary]`
+  - `[COMPRESSED:`
+  - `Last decision:`
+- Any `[COMPRESSED...]` or `Last decision:` tags in prompt history or context summaries are internal system context ONLY. Do NOT echo, copy, prefix, or output them in any response under any circumstances.

@@ -14,7 +14,6 @@ import {
   ScanText,
   Target,
   TrendingDown,
-  TrendingUp,
   WalletCards,
   AlertCircle,
   Sparkles,
@@ -225,12 +224,7 @@ export default function DashboardPage() {
             </span>
             <span className="size-1 rounded-full bg-white/40" aria-hidden />
             <span className="flex items-center gap-1">
-              {t.net >= 0 ? (
-                <TrendingUp className="size-3.5" />
-              ) : (
-                <TrendingDown className="size-3.5" />
-              )}
-              {mask(t.net)}
+              <ListOrdered className="size-3.5" /> {t.count} transaksi
             </span>
             <span className="size-1 rounded-full bg-white/40" aria-hidden />
             <span className="flex items-center gap-1">

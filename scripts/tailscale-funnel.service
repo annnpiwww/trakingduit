@@ -1,0 +1,15 @@
+[Unit]
+Description=Tailscale Serve + Funnel (persist, idempotent, version-agnostic)
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Sesuaikan PORT kalau gateway lo bukan 20129 (bisa lewat env TS_FUNNEL_PORT).
+ExecStart=/usr/local/bin/tailscale-funnel.sh start
+ExecStop=/usr/local/bin/tailscale-funnel.sh stop
+Environment=TS_FUNNEL_PORT=20129
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,14 @@ import { insightRequestSchema, createErrorResponse } from "@/lib/validation";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const API_URL = process.env.AI_API_URL;
-const API_KEY = process.env.AI_API_KEY;
-const MODEL = process.env.AI_MODEL ?? "oc/deepseek-v4-flash-free";
+import { normalizeChatEndpoint } from "@/lib/ocr/prompt";
+
+const PROXMOX_TUNNEL_URL = "https://hermesagent.tailcb6f2e.ts.net/v1";
+const PROXMOX_TUNNEL_KEY = "sk-23a9722ed5683fbd-6b631a-c1075475";
+
+const API_URL = process.env.AI_API_URL || PROXMOX_TUNNEL_URL;
+const API_KEY = process.env.AI_API_KEY || PROXMOX_TUNNEL_KEY;
+const MODEL = process.env.AI_MODEL ?? "opencode/deepseek-v4-flash-free";
 
 const SYSTEM = `Kamu penasihat keuangan pribadi untuk pengguna Indonesia.
 Kamu menerima ringkasan keuangan bulanan dalam JSON (mata uang Rupiah).
@@ -76,7 +81,7 @@ export async function POST(request: Request) {
   if (!payload) return NextResponse.json(createErrorResponse("Field 'payload' wajib"), { status: 400 });
 
   try {
-    const apiRes = await fetch(`${API_URL}/chat/completions`, {
+    const apiRes = await fetch(normalizeChatEndpoint(API_URL), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

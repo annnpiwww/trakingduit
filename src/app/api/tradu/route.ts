@@ -13,10 +13,17 @@ export const maxDuration = 60;
 //                              utama rate-limit/offline (default gemma4 -> best-chat)
 //   GEMINI_API_KEY          -> fallback terakhir langsung ke Google Gemini API
 //   GEMINI_TRADU_MODEL      -> default "gemini-3.5-flash"
-const API_URL = process.env.TRADU_API_URL;
-const API_KEY = process.env.TRADU_API_KEY;
+import { normalizeChatEndpoint } from "@/lib/ocr/prompt";
+
+const PROXMOX_TUNNEL_URL = "https://hermesagent.tailcb6f2e.ts.net/v1";
+const PROXMOX_TUNNEL_KEY = "sk-23a9722ed5683fbd-6b631a-c1075475";
+
+const API_URL = process.env.TRADU_API_URL || PROXMOX_TUNNEL_URL;
+const API_KEY = process.env.TRADU_API_KEY || PROXMOX_TUNNEL_KEY;
 const MODEL = process.env.TRADU_MODEL ?? "opencode/deepseek-v4-flash-free";
-const FALLBACK_MODELS = (process.env.TRADU_FALLBACK_MODELS ?? "ollama-cloud/gemma4:31b,auto/best-chat")
+const FALLBACK_MODELS = (
+  process.env.TRADU_FALLBACK_MODELS ?? "antigravity/gemini-3.1-flash-lite,antigravity/gemini-3.6-flash-high,auto/best-chat"
+)
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);
@@ -214,7 +221,7 @@ async function chatOnce(
   try {
     let res: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
+      res = await fetch(normalizeChatEndpoint(API_URL), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
