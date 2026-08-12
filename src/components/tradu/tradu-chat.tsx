@@ -238,7 +238,17 @@ export function TraduChat({
         });
 
         if (!res.ok) {
-          throw new Error("HTTP error " + res.status);
+          // Baca body error (server kirim `detail` teknis, mis. "proxy: API Error
+          // (401): API key required") biar diagnosa gampang tanpa buka Vercel logs.
+          let detail = "";
+          try {
+            const errBody = (await res.json()) as { error?: string; detail?: string };
+            detail = errBody.detail ?? errBody.error ?? "";
+          } catch {
+            /* body bukan JSON — abaikan */
+          }
+          console.error("AI Error detail:", res.status, detail || `HTTP ${res.status}`);
+          throw new Error(detail || "HTTP error " + res.status);
         }
         // Quota dipakai HANYA kalau AI berhasil jawab — request gagal (502,
         // timeout) jangan sampai buang kuota user.
@@ -255,12 +265,19 @@ export function TraduChat({
         ]);
       } catch (error) {
         console.error("AI Error:", error);
+        // 401 dari proxy = API key ditolak — kasih tahu user biar dia ngerti
+        // kenapa Tradu mati (auth OmniRoute aktif, key belum diupdate).
+        const msg = error instanceof Error ? error.message : "";
+        const isAuth =
+          msg.includes("401") || msg.includes("API key") || msg.includes("Unauthorized");
         setMessages((prev) => [
           ...prev,
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
+            content: isAuth
+              ? "Maaf, koneksi AI Tradu ditolak — API key-nya belum di-update. Kabarin admin biar segera dibenerin ya~ 🙏"
+              : "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
           },
         ]);
       } finally {

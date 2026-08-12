@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import { ocrRequestSchema, createErrorResponse } from "@/lib/validation";
-import { PROMPT, parseOcrText, ocrViaOpenAI } from "@/lib/ocr/prompt";
+import { parseOcrText, ocrViaOpenAI, ocrViaGemini } from "@/lib/ocr/prompt";
 import type { AiOcrResponse } from "@/lib/ocr/prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const GEMINI_MODEL = "gemini-2.0-flash";
-
 /**
- * POST /api/ocr/gemini — vision OCR via an OpenAI-compatible endpoint
- * (configured with OCR_API_URL / OCR_API_KEY / OCR_MODEL). Kalau proxy tidak
- * diset atau gagal (502/503/fetch error), fallback langsung ke Google Gemini
- * API (GEMINI_API_KEY). Return 501 hanya kalau dua-duanya tidak ada.
+ * POST /api/ocr/gemini — legacy vision OCR endpoint (OpenAI-compatible proxy
+ * dulu, Gemini fallback). Route utama client adalah /api/ocr — file ini
+ * dipertahankan sebagai cadangan manual. Dipakai bersama: ocrViaOpenAI &
+ * ocrViaGemini dari lib/ocr/prompt.ts.
  */
 export async function POST(request: Request) {
   // No auth required: this route only OCRs the uploaded image and touches no
@@ -54,7 +52,7 @@ export async function POST(request: Request) {
     if (ocrApiUrl && ocrApiKey) {
       try {
         parsed = parseOcrText(
-          await ocrViaOpenAI(ocrApiUrl, ocrApiKey, process.env.OCR_MODEL || "ocr", image),
+          await ocrViaOpenAI(ocrApiUrl, ocrApiKey, process.env.OCR_MODEL || "ollama-cloud/gemma4:31b", image),
         );
       } catch (err) {
         console.error("OCR proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
@@ -62,19 +60,12 @@ export async function POST(request: Request) {
     }
 
     // 2) Fallback ke Google Gemini API langsung
-    if (!parsed && geminiKey) {
+    if (!parsed?.raw_text?.trim() && geminiKey) {
       parsed = parseOcrText(await ocrViaGemini(image));
       engine = "gemini";
     }
 
-    if (!parsed) {
-      return NextResponse.json(
-        createErrorResponse("OCR tidak bisa baca teks dari gambar"),
-        { status: 502 },
-      );
-    }
-
-    if (!parsed.raw_text?.trim()) {
+    if (!parsed?.raw_text?.trim()) {
       return NextResponse.json(
         createErrorResponse("OCR tidak bisa baca teks dari gambar"),
         { status: 502 },
@@ -100,43 +91,4 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
-}
-
-/** Panggil Google Gemini API langsung (vision), balikin teks mentah; throw kalau gagal. */
-async function ocrViaGemini(image: string): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
-  const { mimeType, data } = splitDataUrl(image);
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: PROMPT }] },
-        contents: [{ role: "user", parts: [{ inlineData: { mimeType, data } }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
-      }),
-    },
-  );
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
-  }
-
-  const dataRes = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const text = dataRes.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  if (!text.trim()) throw new Error("Gemini kosong (tidak ada kandidat)");
-  return text;
-}
-
-/** Pecah data URL ("data:image/jpeg;base64,...") jadi mimeType + base64. */
-function splitDataUrl(image: string): { mimeType: string; data: string } {
-  const comma = image.indexOf(",");
-  const header = comma >= 0 ? image.slice(0, comma) : "";
-  const mimeType = header.replace(/^data:/, "").split(";")[0] || "image/jpeg";
-  const data = comma >= 0 ? image.slice(comma + 1) : image;
-  return { mimeType, data };
 }

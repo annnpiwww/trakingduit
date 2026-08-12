@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ocrRequestSchema, createErrorResponse } from "@/lib/validation";
-import { ocrViaOpenAI, parseOcrText } from "@/lib/ocr/prompt";
+import { ocrViaOpenAI, parseOcrText, ocrViaGemini } from "@/lib/ocr/prompt";
+import type { AiOcrResponse } from "@/lib/ocr/prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -10,9 +11,24 @@ export const maxDuration = 60;
 const OCR_URL = process.env.OCR_API_URL;
 const OCR_API_KEY = process.env.OCR_API_KEY;
 const OCR_MODEL = process.env.OCR_MODEL ?? "ollama-cloud/gemma4:31b";
+// Chain cadangan, koma-pisah, dicoba berurutan kalau model utama gagal/rate-limit.
+// ocrgambar-copy & auto/best-vision sudah dites bisa baca struk dengan akurat.
+const OCR_FALLBACK_MODELS = (process.env.OCR_FALLBACK_MODELS ?? "ocrgambar-copy,auto/best-vision")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+// Client abort di 50s (lihat lib/ocr/client.ts) — deadline server harus lebih
+// pendek biar respons sempat nyampe ke client sebelum fetch-nya dibatalkan.
+// 48s: kalau gemma4 hang di 25s, ocrgambar-copy (butuh ~22s) masih muat di
+// sisa 23s, jadi fallback tetap kepake — bukan langsung kolaps ke Tesseract.
+const OCR_DEADLINE_MS = 48_000;
+const OCR_PER_MODEL_MS = 25_000;
+const GEMINI_OCR_TIMEOUT_MS = 20_000;
 
 /**
- * POST /api/ocr — AI OCR via OpenAI-compatible vision endpoint (ocrgambar-copy).
+ * POST /api/ocr — AI OCR via OpenAI-compatible vision endpoint.
+ * Chain: OCR_MODEL -> OCR_FALLBACK_MODELS -> Gemini (kalau GEMINI_API_KEY ada).
  * Returns structured { text, structured } on success, or 502 with
  * fallback:"tesseract" so the client drops to Tesseract.js.
  */
@@ -44,34 +60,67 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const parsed = parseOcrText(await ocrViaOpenAI(OCR_URL, OCR_API_KEY, OCR_MODEL, image));
+  const deadline = Date.now() + OCR_DEADLINE_MS;
+  const errors: string[] = [];
+  let parsed: AiOcrResponse | null = null;
 
-    if (!parsed.raw_text?.trim()) {
-      return NextResponse.json(
-        { ...createErrorResponse("OCR tidak bisa baca teks dari gambar"), fallback: "tesseract" },
-        { status: 502 },
-      );
+  // 1) Chain OpenAI-compatible vision models
+  for (const model of [OCR_MODEL, ...OCR_FALLBACK_MODELS]) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      const text = await ocrViaOpenAI(OCR_URL, OCR_API_KEY, model, image, Math.min(OCR_PER_MODEL_MS, remaining));
+      const candidate = parseOcrText(text);
+      // Model pertama yang kasih teks = menang; sisanya nggak perlu.
+      if (candidate.raw_text?.trim()) {
+        parsed = candidate;
+        break;
+      }
+      errors.push(`${model}: teks kosong`);
+    } catch (err) {
+      errors.push(`${model}: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`OCR model ${model} gagal:`, err instanceof Error ? err.message : err);
     }
+  }
 
-    return NextResponse.json({
-      text: parsed.raw_text,
-      structured: {
-        merchant: parsed.merchant,
-        address: parsed.address,
-        date: parsed.date,
-        total: parsed.total,
-        tax: parsed.tax,
-        category: parsed.category,
-        items: parsed.items || [],
-      },
-      engine: "ai-ocr",
-    });
-  } catch (err) {
-    console.error("OCR route error:", err);
+  // 2) Fallback terakhir ke Google Gemini (vision) — kalau semua model gateway gagal.
+  if ((!parsed?.raw_text?.trim()) && process.env.GEMINI_API_KEY) {
+    const remaining = deadline - Date.now();
+    if (remaining > 0) {
+      try {
+        parsed = parseOcrText(
+          await ocrViaGemini(image, Math.min(GEMINI_OCR_TIMEOUT_MS, remaining)),
+        );
+      } catch (err) {
+        errors.push(`gemini: ${err instanceof Error ? err.message : String(err)}`);
+        console.error("OCR Gemini fallback gagal:", err instanceof Error ? err.message : err);
+      }
+    }
+  }
+
+  if (!parsed?.raw_text?.trim()) {
     return NextResponse.json(
-      { error: err instanceof Error ? `${err.name}: ${err.message}` : "OCR request gagal", fallback: "tesseract" },
+      {
+        ...createErrorResponse(
+          errors.length ? `OCR gagal: ${errors.join(" | ")}` : "OCR tidak bisa baca teks dari gambar",
+        ),
+        fallback: "tesseract",
+      },
       { status: 502 },
     );
   }
+
+  return NextResponse.json({
+    text: parsed.raw_text,
+    structured: {
+      merchant: parsed.merchant,
+      address: parsed.address,
+      date: parsed.date,
+      total: parsed.total,
+      tax: parsed.tax,
+      category: parsed.category,
+      items: parsed.items || [],
+    },
+    engine: "ai-ocr",
+  });
 }

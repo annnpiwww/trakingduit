@@ -6,16 +6,30 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Konfigurasi via env saja (jangan commit secret/hardcode):
-//   TRADU_API_URL  -> OpenAI-compatible endpoint (mis. OmniRoute via Tailscale Funnel)
-//   TRADU_API_KEY  -> API key gateway (kalau gateway tanpa auth, tetap isi dummy)
-//   TRADU_MODEL    -> default "auto/best-chat"
-//   GEMINI_API_KEY -> fallback langsung ke Google Gemini API
-//   GEMINI_TRADU_MODEL -> default "gemini-2.0-flash"
+//   TRADU_API_URL           -> OpenAI-compatible endpoint (mis. OmniRoute via Tailscale Funnel)
+//   TRADU_API_KEY           -> API key gateway (kalau gateway tanpa auth, tetap isi dummy)
+//   TRADU_MODEL             -> model utama. Default opencode free (deepseek v4 flash free).
+//   TRADU_FALLBACK_MODELS   -> daftar cadangan, koma-pisah, dicoba berurutan kalau model
+//                              utama rate-limit/offline (default gemma4 -> best-chat)
+//   GEMINI_API_KEY          -> fallback terakhir langsung ke Google Gemini API
+//   GEMINI_TRADU_MODEL      -> default "gemini-3.5-flash"
 const API_URL = process.env.TRADU_API_URL;
 const API_KEY = process.env.TRADU_API_KEY;
-const MODEL = process.env.TRADU_MODEL ?? "ollama-cloud/gemma4:31b";
+const MODEL = process.env.TRADU_MODEL ?? "opencode/deepseek-v4-flash-free";
+const FALLBACK_MODELS = (process.env.TRADU_FALLBACK_MODELS ?? "ollama-cloud/gemma4:31b,auto/best-chat")
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_TRADU_MODEL ?? "gemini-3.5-flash";
+
+// Timeout hasil tes (Agu 2026): deepseek-free 2-9s, gemma4 2-3s, best-chat ~6s.
+// Cold start bisa lebih lama, jadi tiap model dikasih 25s — tapi satu deadline
+// global 55s dihitung SEKALI di level route (bukan per-fungsi) memastikan total
+// request selalu < Vercel maxDuration (60s), dan satu model yang lambat TIDAK
+// memakan jatah model cadangan.
+const DEADLINE_MS = 55_000;
+const PER_MODEL_MS = 25_000;
 
 export async function POST(req: Request) {
   if (isSupabaseConfigured) {
@@ -95,32 +109,56 @@ Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatka
     }
 
     let reply: string | null = null;
+    // Detail error terakhir dari tiap jalur, biar pesan ke klien spesifik
+    // (mis. "401 API key ditolak") bukan cuma "koneksi bermasalah".
+    const errors: string[] = [];
 
-    // 1) Coba OpenAI-compatible proxy dulu
+    // Satu deadline global untuk SEMUA jalur AI — sisa waktu Gemini = total
+    // minus yang sudah terpakai chain proxy, jadi nggak pernah tembus 60s.
+    const deadline = Date.now() + DEADLINE_MS;
+
+    // 1) Coba OpenAI-compatible proxy dulu (chain: MODEL -> FALLBACK_MODELS)
     if (API_URL && API_KEY) {
       try {
-        reply = await chatViaOpenAI(apiMessages);
+        reply = await chatViaOpenAI(apiMessages, API_KEY, deadline);
       } catch (err) {
+        errors.push(`proxy: ${err instanceof Error ? err.message : String(err)}`);
         console.error("TRADU proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
       }
     }
     // 2) Kalau cuma URL yang ada (gateway tanpa auth), tetep coba pakai key dummy
     else if (API_URL) {
       try {
-        reply = await chatViaOpenAI(apiMessages, "dummy-key");
+        reply = await chatViaOpenAI(apiMessages, "dummy-key", deadline);
       } catch (err) {
+        errors.push(`proxy: ${err instanceof Error ? err.message : String(err)}`);
         console.error("TRADU proxy gagal, fallback ke Gemini:", err instanceof Error ? err.message : err);
       }
     }
 
-    // 2) Fallback ke Google Gemini API langsung
+    // 3) Fallback terakhir ke Google Gemini API langsung (sisa waktu aja)
     if (!reply && GEMINI_API_KEY) {
-      reply = await chatViaGemini(apiMessages);
+      const remaining = deadline - Date.now();
+      if (remaining > 0) {
+        try {
+          reply = await chatViaGemini(apiMessages, remaining);
+        } catch (err) {
+          errors.push(`gemini: ${err instanceof Error ? err.message : String(err)}`);
+          console.error("TRADU Gemini fallback gagal:", err instanceof Error ? err.message : err);
+        }
+      } else {
+        errors.push("gemini: waktu habis sebelum fallback");
+      }
     }
 
     if (!reply) {
+      // Pesan user-friendly tetap sama; `detail` teknikal dibawa buat debug
+      // (muncul di konsol klien, bukan ditampilkan mentah ke pengguna).
       return NextResponse.json(
-        { error: "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~" },
+        {
+          error: "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
+          detail: errors.join(" | ") || "tidak ada jalur AI yang dikonfigurasi",
+        },
         { status: 502 },
       );
     }
@@ -136,28 +174,66 @@ interface ApiMessage {
   content: string;
 }
 
-/** Panggil OpenAI-compatible proxy; throw kalau gagal. */
-async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promise<string> {
-  // Model self-hosted bisa lambat; batal di 50s biar route nggak kena Vercel
-  // maxDuration (60s) dan klien nggak nunggu terlalu lama.
+/**
+ * Panggil OpenAI-compatible proxy dengan chain model: tiap model dapat jatah
+ * waktu sendiri (PER_MODEL_MS), tapi total dibatasi deadline global supaya
+ * route nggak kena Vercel maxDuration. Gagal di satu model → lanjut model
+ * berikutnya. Throw kalau semuanya gagal.
+ */
+async function chatViaOpenAI(
+  apiMessages: ApiMessage[],
+  apiKey = API_KEY ?? "",
+  deadline = Date.now() + DEADLINE_MS,
+): Promise<string> {
+  const models = [MODEL, ...FALLBACK_MODELS];
+  const failures: string[] = [];
+
+  for (const model of models) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      return await chatOnce(apiMessages, apiKey, model, Math.min(PER_MODEL_MS, remaining));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      failures.push(`${model}: ${msg}`);
+      console.error(`TRADU model ${model} gagal:`, msg);
+    }
+  }
+  throw new Error(failures.join(" | ") || "Semua model gagal");
+}
+
+/** Satu percobaan ke satu model, dengan retry singkat untuk 429/503. */
+async function chatOnce(
+  apiMessages: ApiMessage[],
+  apiKey: string,
+  model: string,
+  timeoutMs: number,
+): Promise<string> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 50_000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: apiMessages,
-        // 0.7: cukup kreatif buat persona santai, tapi konsisten & analitis.
-        temperature: 0.7,
-        stream: false,
-      }),
-      signal: controller.signal,
-    });
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(`${API_URL}/chat/completions`.replace(/\/+$/, ""), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: apiMessages,
+          // 0.7: cukup kreatif buat persona santai, tapi konsisten & analitis.
+          temperature: 0.7,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+      // Rate-limit/admission backpressure: retry briefly before giving up.
+      if (res.status !== 429 && res.status !== 503) break;
+      if (attempt < 2) await sleepAbortable(1500 * (attempt + 1), controller);
+    }
+    res = res!;
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");
@@ -171,6 +247,21 @@ async function chatViaOpenAI(apiMessages: ApiMessage[], apiKey = API_KEY): Promi
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Tidur tapi tetap bisa di-abort kalau timeout slice habis duluan. */
+function sleepAbortable(ms: number, controller: AbortController): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      controller.signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    controller.signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 /**
@@ -211,33 +302,40 @@ function stripMarkdownFormatting(reply: string): string {
     .trim();
 }
 
-/** Panggil Google Gemini API langsung; throw kalau gagal. */
-async function chatViaGemini(apiMessages: ApiMessage[]): Promise<string> {
+/** Panggil Google Gemini API langsung; throw kalau gagal atau timeout. */
+async function chatViaGemini(apiMessages: ApiMessage[], timeoutMs = 15_000): Promise<string> {
   const { systemInstruction, contents } = toGeminiMessages(apiMessages);
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction,
-        contents,
-        generationConfig: { temperature: 0.7 },
-      }),
-    },
-  );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction,
+          contents,
+          generationConfig: { temperature: 0.7 },
+        }),
+        signal: controller.signal,
+      },
+    );
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const reply = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!reply.trim()) throw new Error("Gemini kosong (tidak ada kandidat)");
+    return reply;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const reply = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  if (!reply.trim()) throw new Error("Gemini kosong (tidak ada kandidat)");
-  return reply;
 }
 
 /** Konversi history OpenAI-style (system/user/assistant) ke format Gemini. */

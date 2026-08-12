@@ -93,7 +93,7 @@ export async function ocrViaOpenAI(
       });
       // Rate-limit/admission backpressure: retry briefly before giving up.
       if (res.status !== 429 && res.status !== 503) break;
-      if (attempt < 2) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      if (attempt < 2) await sleepAbortable(1500 * (attempt + 1), controller);
     }
     res = res!;
 
@@ -108,6 +108,69 @@ export async function ocrViaOpenAI(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Tidur tapi tetap bisa di-abort kalau timeout slice habis duluan. */
+function sleepAbortable(ms: number, controller: AbortController): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      controller.signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    controller.signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/** Panggil Google Gemini API langsung (vision), balikin teks mentah; throw kalau gagal. */
+export async function ocrViaGemini(image: string, timeoutMs = 20_000): Promise<string> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY belum diset");
+  const model = process.env.GEMINI_OCR_MODEL ?? "gemini-3.5-flash";
+  const { mimeType, data } = splitDataUrl(image);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: PROMPT }] },
+          contents: [{ role: "user", parts: [{ inlineData: { mimeType, data } }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1200 },
+        }),
+        signal: controller.signal,
+      },
+    );
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Gemini API error ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const dataRes = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = dataRes.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!text.trim()) throw new Error("Gemini kosong (tidak ada kandidat)");
+    return text;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Pecah data URL ("data:image/jpeg;base64,...") jadi mimeType + base64. */
+function splitDataUrl(image: string): { mimeType: string; data: string } {
+  const comma = image.indexOf(",");
+  const header = comma >= 0 ? image.slice(0, comma) : "";
+  const mimeType = header.replace(/^data:/, "").split(";")[0] || "image/jpeg";
+  const data = comma >= 0 ? image.slice(comma + 1) : image;
+  return { mimeType, data };
 }
 
 /**
