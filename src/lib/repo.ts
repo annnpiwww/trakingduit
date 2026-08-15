@@ -311,7 +311,7 @@ async function checkBudgetAlerts(tx: Transaction) {
   const cat = await d.categories.get(budget.category_id);
   const over = ratio >= 1;
   await pushNotification({
-    title: over ? `Budget ${cat?.name ?? ""} terlampaui` : `Budget ${cat?.name ?? ""} hampir habis`,
+    title: over ? `Budget ${cat?.name ?? ""} terlampaui` : `Budget ${cat?.name ?? ""} hampir menyentuh batas`,
     body: over
       ? `Pengeluaran bulan ini ${Math.round(ratio * 100)}% dari budget.`
       : `Sudah terpakai ${Math.round(ratio * 100)}% dari budget bulan ini.`,
@@ -625,7 +625,7 @@ export async function runBillReminderScan(): Promise<number> {
     const marker = `${bill.id}:${bill.due_date}`;
     if (existing.some((n) => n.ref_id === marker)) continue;
     await pushNotification({
-      title: daysLeft < 0 ? `Tagihan telat: ${bill.name}` : `Tagihan jatuh tempo: ${bill.name}`,
+      title: daysLeft < 0 ? `Tagihan terlambat: ${bill.name}` : `Tagihan jatuh tempo: ${bill.name}`,
       body:
         daysLeft < 0
           ? `Lewat ${Math.abs(daysLeft)} hari dari jatuh tempo.`

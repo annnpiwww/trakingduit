@@ -294,7 +294,7 @@ export default function DashboardPage() {
           <EmptyState
             icon={CalendarClock}
             title="Belum ada tagihan"
-            description="Tambahkan tagihan melalui halaman Tagihan."
+            description="Tambah tagihan lewat halaman Tagihan."
             className="py-6"
           />
         )}
@@ -302,7 +302,7 @@ export default function DashboardPage() {
 
       {/* Recent transactions - max 3, no "Lihat Semua" button */}
       <Card className="overflow-hidden">
-        <CardHeader title="Transaksi Terakhir" className="px-4 pt-4" />
+        <CardHeader title="Transaksi terbaru" className="px-4 pt-4" />
         <div className="mt-2">
           {recent.length > 0 ? (
             <>
@@ -321,7 +321,7 @@ export default function DashboardPage() {
               <EmptyState
                 icon={ListOrdered}
                 title="Belum ada transaksi"
-                description="Tambahkan transaksi pertama melalui tombol (+) atau halaman Transaksi."
+                description="Tambah transaksi pertama lewat tombol (+) atau halaman Transaksi."
                 className="py-6"
               />
             </div>

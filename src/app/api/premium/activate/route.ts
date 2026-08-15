@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Aktivasi premium via kode (mode uji sebelum payment live).
+ * Pengaktifan premium via kode (mode uji sebelum payment live).
  *
  * Dipakai sementara sampai integrasi Midtrans/QRIS selesai: admin kasih kode
  * (env PREMIUM_ACTIVATION_CODE) ke tester, user masukin di halaman Premium,
@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Kode promo statis (mode uji): TRAKINGPRO → Pro 3 hari, PROMOMERDEKA → Pro 7
 // hari, case-insensitive.
-// honey: hardcoded = butuh redeploy buat ganti; pindahin ke env/DB kalo promo
+// honey: hardcoded = butuh redeploy buat ganti; pindahin ke env/DB kalau promo
 // mulai ganti-ganti (trigger: lebih dari 1 promo atau promo berbayar).
 const PROMO_CODES: Record<string, { tier: "pro"; days: number }> = {
   trakingpro: { tier: "pro", days: 3 },
@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
     const expected = process.env.PREMIUM_ACTIVATION_CODE;
     if (!expected) {
       return NextResponse.json(
-        { ok: false, error: "Aktivasi belum dikonfigurasi (PREMIUM_ACTIVATION_CODE kosong)" },
+        { ok: false, error: "Pengaktifan belum diatur (PREMIUM_ACTIVATION_CODE kosong)" },
         { status: 503 },
       );
     }
     if (!code || code.trim() !== expected) {
-      return NextResponse.json({ ok: false, error: "Kode aktivasi salah" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: "Kode pengaktifan salah" }, { status: 401 });
     }
     if (tier !== "plus" && tier !== "pro") {
       return NextResponse.json({ ok: false, error: "Tier tidak valid" }, { status: 400 });

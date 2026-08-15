@@ -12,7 +12,7 @@ const RETRY_BASE_MS = 5_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
 export type AutoSyncState =
-  /** Supabase belum dikonfigurasi — app jalan lokal saja. */
+  /** Supabase belum diatur — app jalan lokal saja. */
   | "disabled"
   /** Supabase aktif tapi belum login akun cloud. */
   | "local"

@@ -84,7 +84,7 @@ export function usePWAInstall() {
     if (!deferred) return false;
     await deferred.prompt();
     const { outcome } = await deferred.userChoice;
-    // Chrome nggak nge-fire beforeinstallprompt lagi sampe reload —
+    // Chrome nggak nge-fire beforeinstallprompt lagi sampai reload —
     // kalau dismissed, sembunyiin tombol biar nggak jadi no-op.
     if (outcome === "accepted") status = "installed";
     else status = "unsupported";

@@ -61,7 +61,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Tema warna premium cuma buat Pro. Enforce di root biar user free/plus yang
-  // nyimpen accent lama (mis. dari masa Pro) nggak kebagian palette premium
+  // menyimpan accent lama (mis. dari masa Pro) nggak kebagian palette premium
   // di seluruh app. Reset reaktif saat tier turun tetap ada di halaman Settings.
   React.useEffect(() => {
     void getTier().then((t) => {

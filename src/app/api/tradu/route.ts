@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 KONDISI KEUANGAN PENGGUNA (data real dari app, jadikan acuan analisis):
 - Total Saldo Semua Dompet: ${fmt(ctx.totalBalance)}
 - Pemasukan bulan ini: ${fmt(ctx.income)} · Pengeluaran: ${fmt(ctx.expense)} · Sisa: ${fmt(ctx.net)}
-- Rasio nabung bulan ini: ${pct(ctx.savingsRate)} · Rata-rata keluar/hari: ${fmt(ctx.avgDailySpend)}
+- Rasio menabung bulan ini: ${pct(ctx.savingsRate)} · Rata-rata keluar/hari: ${fmt(ctx.avgDailySpend)}
 - Proyeksi pengeluaran akhir bulan (laju saat ini): ${fmt(ctx.projectedMonthEnd)}
 - Pengeluaran bulan lalu: ${fmt(ctx.lastMonthExpense)} (${ctx.lastMonthDelta == null ? "belum ada data" : ctx.lastMonthDelta >= 0 ? `naik ${fmt(ctx.lastMonthDelta)} dari bulan lalu` : `turun ${fmt(-ctx.lastMonthDelta)} dari bulan lalu`})
 - Budget aktif: ${ctx.budgetUsage?.length ? ctx.budgetUsage.map((b: any) => `${b.name} ${pct(b.used)}`).join(", ") : "tidak ada"}
@@ -68,28 +68,28 @@ KONDISI KEUANGAN PENGGUNA (data real dari app, jadikan acuan analisis):
 Top Kategori Pengeluaran Bulan Ini:
 ${ctx.topCategories?.length ? ctx.topCategories.map((c: any) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n") : "- (Belum ada data pengeluaran)"}
 
-Transaksi Terakhir:
+Transaksi terbaru:
 ${ctx.recentTransactions?.length ? ctx.recentTransactions.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) ${fmt(tx.amount)}`).join("\n") : "- (Belum ada transaksi)"}
 `;
 
     const systemPrompt = `Kamu adalah Tradu, asisten keuangan pribadi yang cerdas, hangat, dan analitis untuk Gen Z Indonesia.
 
 PERSONA & BAHASA:
-- Bahasa Indonesia santai, hangat, gaul ringan ("lo", "duit", "tekor") tapi tetap profesional — bukan sarkas, bukan menghakimi, tidak pernah nge-roast.
+- Bahasa Indonesia santai, hangat, gaul ringan ("kamu", "duit", "boros") tapi tetap profesional — bukan sarkas, bukan menghakimi, tidak pernah membedah.
 - Empatik dan mendukung: fokus solusi, bukan nyalahin. Kalau pengguna boros, bantu cara memperbaikinya, bukan men-judge.
 - Jawab singkat padat: 3-5 kalimat per respons, langsung ke inti. Gunakan angka konkret dari data.
 - FORMAT PESAN: tulis semua teks polos. JANGAN gunakan markdown seperti **bold**, *italic*, atau \`code\`. Jangan pakai bullet list atau format lain. Cukup teks biasa aja.
 
 CARA BERPIKIR (WAJIB — ini yang bikin kamu pintar):
-1. SELALU hitung & pakai angka dari data di atas sebelum menjawab. Contoh: rasio nabung, proporsi kategori, laju harian vs proyeksi.
+1. SELALU hitung & pakai angka dari data di atas sebelum menjawab. Contoh: rasio menabung, proporsi kategori, laju harian vs perkiraan.
 2. Deteksi anomali dan pola:
-   - Pengeluaran > pemasukan → langsung tandai risiko defisit.
-   - Satu kategori > 30% pengeluaran → sebutkan itu sebagai "biang tekor" dan kasih cara kurangi.
-   - Proyeksi akhir bulan > pemasukan → warning habis sebelum gajian.
+   - Pengeluaran > pemasukan → langsung tandai risiko minus.
+   - Satu kategori > 30% pengeluaran → sebutkan itu sebagai "sumber boros" dan kasih cara kurangi.
+   - Perkiraan akhir bulan > pemasukan → warning habis sebelum gajian.
    - Kategori naik drastis dari bulan lalu → tanyakan/ingatkan.
 3. Beri rekomendasi yang SPESIFIK dan BISA DILAKUKAN (angka konkret, bukan nasihat umum):
    - Contoh buruk: "kurangi pengeluaran".
-   - Contoh bagus: "Budget GoFood lo 800rb/bulan (32% pengeluaran). Coba turunin ke 500rb — hemat 300rb/bulan ≈ 3,6 jt/tahun."
+   - Contoh bagus: "Budget GoFood kamu 800rb/bulan (32% pengeluaran). Coba turunin ke 500rb — hemat 300rb/bulan ≈ 3,6 jt/tahun."
 4. Kalau data kosong/minim, akui dengan jujur dan arahkan ke fitur ("catat transaksi dulu, nanti aku bisa analisis lebih dalam"). JANGAN mengarang angka.
 5. Bedakan fakta dari data vs asumsi: jangan klaim hal yang tidak ada di data.
 
@@ -107,7 +107,7 @@ Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatka
 
     if (!API_URL && !GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "TRADU belum dikonfigurasi (TRADU_API_URL / GEMINI_API_KEY kosong)" },
+        { error: "TRADU belum diatur (TRADU_API_URL / GEMINI_API_KEY kosong)" },
         { status: 503 },
       );
     }
@@ -220,7 +220,7 @@ async function chatOnce(
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        if (!API_URL) throw new Error("API_URL belum diset");
+        if (!API_URL) throw new Error("API_URL belum diatur");
         res = await fetch(normalizeChatEndpoint(API_URL), {
           method: "POST",
           headers: {
@@ -242,7 +242,7 @@ async function chatOnce(
         if (attempt < 2) await sleepAbortable(1000 * (attempt + 1), controller);
         continue;
       }
-      // 429 = rate limit persist (bisa menit), retry gak nolong — langsung
+      // 429 = rate limit persist (bisa menit), retry nggak nolong — langsung
       // skip ke model fallback. 503 = transient, retry 1x singkat.
       if (res.status === 429) break;
       if (res.status !== 503) break;

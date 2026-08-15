@@ -125,7 +125,7 @@ export default function WalletsPage() {
               onClick={() => setAdjustWallet(null)}
               className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-white/25"
             >
-              <SlidersHorizontal className="size-3" /> Setel Saldo Real
+              <SlidersHorizontal className="size-3" /> Atur Saldo Real
             </button>
           </span>
         }
@@ -154,7 +154,7 @@ export default function WalletsPage() {
           <EmptyState
             icon={WalletIcon}
             title="Belum ada dompet"
-            description="Tambahin dompet tunai, bank, atau e-wallet."
+            description="Tambah dompet tunai, rekening bank, atau e-wallet."
             action={
               <Button
                 size="sm"
@@ -220,7 +220,7 @@ export default function WalletsPage() {
         <div className="space-y-4">
           <p className="text-sm text-muted">
             {deleteTxCount > 0
-              ? `Yakin mau hapus dompet ${deleteConfirm?.name}? Ada riwayat ${deleteTxCount} transaksi loh!`
+              ? `Yakin mau hapus dompet ${deleteConfirm?.name}? Ada riwayat ${deleteTxCount} transaksi, lho!`
               : `Yakin mau hapus dompet ${deleteConfirm?.name}?`}
           </p>
           <div className="flex flex-col gap-2">
@@ -233,7 +233,7 @@ export default function WalletsPage() {
                   onClick={async () => {
                     if (!deleteConfirm) return;
                     const res = await deleteWallet(deleteConfirm.id, { cascade: true });
-                    toast(`Dompet & ${res.txCount} transaksinya dihapus`, "success");
+                    toast(`Dompet dan ${res.txCount} transaksinya dihapus`, "success");
                     setDeleteConfirm(null);
                   }}
                 >
@@ -315,7 +315,7 @@ function WalletCard({
             variant="ghost"
             size="icon"
             onClick={onAdjust}
-            aria-label="Setel saldo real"
+            aria-label="Atur saldo real"
             className="text-white hover:bg-white/15 hover:text-white"
           >
             <SlidersHorizontal className="size-3.5" />
@@ -568,8 +568,8 @@ function AdjustBalanceSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Setel Saldo Real"
-      description="Samain saldo dompet sama uang yang beneran ada"
+      title="Atur Saldo Real"
+      description="Samakan saldo dompet dengan uang yang benar-benar ada"
       footer={
         <div className="flex gap-2">
           <Button variant="outline" size="lg" onClick={onClose}>
@@ -593,7 +593,7 @@ function AdjustBalanceSheet({
             </Select>
           </Field>
         ) : null}
-        <Field label="Saldo real sekarang" hint="Ketik nominal uang yang beneran ada">
+        <Field label="Saldo real sekarang" hint="Ketik nominal uang yang benar-benar ada">
           <Input
             inputMode="numeric"
             value={amount}

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   if (!image) return NextResponse.json(createErrorResponse("Field 'image' wajib diisi"), { status: 400 });
   if (!OCR_URL || !OCR_API_KEY) {
     return NextResponse.json(
-      { ...createErrorResponse("OCR_API_URL/OCR_API_KEY belum diset"), fallback: "tesseract" },
+      { ...createErrorResponse("OCR_API_URL/OCR_API_KEY belum diatur"), fallback: "tesseract" },
       { status: 501 },
     );
   }

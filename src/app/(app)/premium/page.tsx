@@ -66,17 +66,17 @@ export default function PremiumPage() {
           Naikin level TrackingDuit
         </p>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Fitur AI, tanpa batas. Pilih level lu.
+          Fitur AI, tanpa batas. Pilih level kamu.
         </h1>
         <p className="max-w-md text-xs text-muted sm:text-sm">
-          Mulai gratis. Upgrade kalo Tradu & scan lu udah mulai sempit.
+          Mulai gratis. Upgrade kalau Tradu & scan kamu sudah mulai sempit.
         </p>
       </div>
 
       {/* Kuota hari ini */}
       <Card className="p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold">Kuota lu hari ini</p>
+          <p className="text-sm font-semibold">Kuota kamu hari ini</p>
           {tier !== "free" ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-medium text-brand">
               <Crown className="size-3" />
@@ -298,7 +298,7 @@ function PricingCard({
   );
 }
 
-/* --------------------------- Aktivasi (mode uji) --------------------------- */
+/* --------------------------- Pengaktifan (mode uji) --------------------------- */
 
 function ActivationSheet({
   open,
@@ -334,7 +334,7 @@ function ActivationSheet({
       });
       const data = (await res.json()) as { ok?: boolean; error?: string; tier?: TierId; days?: number };
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Gagal aktivasi");
+        throw new Error(data.error || "Gagal pengaktifan");
       }
       // Tier dipakai dari balikan server: kode promo (mis. TRAKINGPRO → Pro) bisa
       // override tier yang diklik user.
@@ -342,7 +342,7 @@ function ActivationSheet({
       onActivated(targetTier);
       onClose();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Gagal aktivasi", "error");
+      toast(err instanceof Error ? err.message : "Gagal pengaktifan", "error");
     } finally {
       setBusy(false);
     }
@@ -353,7 +353,7 @@ function ActivationSheet({
       open={open}
       onClose={onClose}
       title={`Aktifkan ${cfg.name}`}
-      description={`${formatIDR(cfg.price)}/bulan · aktif 30 hari tiap aktivasi`}
+      description={`${formatIDR(cfg.price)}/bulan · aktif 30 hari tiap pengaktifan`}
       size="lg"
       footer={
         <Button
@@ -369,7 +369,7 @@ function ActivationSheet({
     >
       <div className="space-y-4">
         <div className="rounded-xl border border-border bg-surface-2/60 p-4">
-          <p className="mb-2 text-xs font-medium text-muted">Yang lu dapet:</p>
+          <p className="mb-2 text-xs font-medium text-muted">Yang kamu dapet:</p>
           <ul className="space-y-1.5">
             {cfg.benefits.map((b) => (
               <li key={b} className="flex items-start gap-2 text-[13px]">
@@ -381,13 +381,13 @@ function ActivationSheet({
         </div>
 
         <Field
-          label="Kode aktivasi"
-          hint="Masih mode uji sebelum payment live. Minta kode ke admin TrackingDuit."
+          label="Kode pengaktifan"
+          hint="Masih mode uji sebelum pembayaran aktif. Minta kode ke admin TrackingDuit."
         >
           <Input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="Ketik kode aktivasi lu"
+            placeholder="Ketik kode pengaktifan kamu"
             autoCapitalize="off"
             autoCorrect="off"
             onKeyDown={(e) => e.key === "Enter" && submit()}

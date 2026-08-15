@@ -99,19 +99,19 @@ export default function AnalyticsPage() {
           score: Math.max(0, Math.min(100, Math.round(Number(balance > expense) * 30))),
           status: "Buruk",
           tone: "expense" as const,
-          description: `Waduh, boncos total! Lo belum ada pemasukan tapi pengeluaran udah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus!" : `sisa saldo total: ${formatIDR(balance)}`}). Yuk rem dulu jajannya!`,
+          description: `Waduh, saldo cepat habis total! Kamu belum ada pemasukan tapi pengeluaran sudah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus!" : `sisa saldo total: ${formatIDR(balance)}`}). Yuk rem dulu jajannya!`,
         };
       }
       return {
         score: 50,
         status: "Cukup",
         tone: "brand" as const,
-        description: "Keuangan lo pasif nih, kaga ada pemasukan maupun pengeluaran. Coba catat transaksi biar lebih akurat.",
+        description: "Keuangan kamu masih sepi nih, belum ada pemasukan atau pengeluaran. Coba catat beberapa transaksi biar analisisnya makin akurat.",
       };
     }
 
     const expenseRatio = expense / income;
-    const savingRatio = net / income; // rasio nabung
+    const savingRatio = net / income; // rasio menabung
     const expensePercent = Math.round(expenseRatio * 100);
 
     // Skor dasar dari rasio menabung
@@ -136,19 +136,19 @@ export default function AnalyticsPage() {
     if (finalScore >= 80) {
       status = "Sangat Baik";
       tone = "income";
-      description = `Gokil! Pengeluaran lo cuma ${expensePercent}% dari pemasukan. Sisa duit lo yang disimpen mencapai ${Math.round(savingRatio * 100)}%. Total saldo saat ini aman ${formatIDR(balance)}. Mantap bener, pertahanin terus!`;
+      description = `Gokil! Pengeluaran kamu cuma ${expensePercent}% dari pemasukan. Sisa uang yang kamu simpan sudah ${Math.round(savingRatio * 100)}%. Total saldo kamu sekarang aman di ${formatIDR(balance)}. Mantap, pertahankan terus!`;
     } else if (finalScore >= 60) {
       status = "Baik";
       tone = "income";
-      description = `Keuangan lo dalam kondisi sehat. Pengeluaran makan ${expensePercent}% pemasukan. Masih ada sisa tabungan dan saldo lo safe di angka ${formatIDR(balance)}. Kontrol terus impulsive buying lo!`;
+      description = `Keuangan kamu masih sehat. Pengeluaran sekitar ${expensePercent}% dari pemasukan, jadi masih ada sisa buat ditabung. Saldo kamu sekarang ${formatIDR(balance)}. Tetap kontrol belanja impulsif, ya!`;
     } else if (finalScore >= 40) {
       status = "Cukup";
       tone = "brand";
-      description = `Dompet lo mulai tipis nih. Jajan boba & checkout keranjang udah nelan ${expensePercent}% pemasukan. Saldo tersisa ${formatIDR(balance)}. Kurang-kurangin shopping yang kaga penting ya!`;
+      description = `Saldo kamu mulai tipis nih. Jajan dan checkout sudah mengambil ${expensePercent}% dari pemasukan. Sisa saldo ${formatIDR(balance)}. Coba kurangi belanja yang belum terlalu penting, ya!`;
     } else {
       status = "Buruk";
       tone = "expense";
-      description = `Waduh, kondisi kritis! Pengeluaran udah ugal-ugalan makan hingga ${expensePercent}% pemasukan. Duit tersisa makin tiris di angka ${formatIDR(balance)}. Saatnya rem total sebelum boncos kuadrat!`;
+      description = `Waduh, pengeluaran kamu sudah terlalu besar sampai ${expensePercent}% dari pemasukan. Sisa uang tinggal ${formatIDR(balance)}. Saatnya rem dulu supaya saldo nggak makin menipis!`;
     }
 
     return { score: finalScore, status, tone, description };
@@ -220,9 +220,9 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Duit masuk" value={t.income} tone="income" className="border-0 shadow-(--shadow-card)" />
+        <StatTile label="Uang masuk" value={t.income} tone="income" className="border-0 shadow-(--shadow-card)" />
         <StatTile
-          label="Duit keluar"
+          label="Uang keluar"
           value={t.expense}
           tone="expense"
           className="border-0 shadow-(--shadow-card)"
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
           <Sparkles className="size-4 shrink-0" /> Analisis Kesehatan Finansial
         </h4>
         <p className="text-xs text-muted mt-1 leading-relaxed">
-          Kesehatan keuangan lo dapet skor <span className="font-semibold text-fg">{finHealth.score}/100</span> ({finHealth.status}). {finHealth.description}
+          Kesehatan keuangan kamu dapet skor <span className="font-semibold text-fg">{finHealth.score}/100</span> ({finHealth.status}). {finHealth.description}
         </p>
       </Card>
 
@@ -279,14 +279,14 @@ export default function AnalyticsPage() {
           {chartTab === "daily" && (
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
-                <CardHeader title="Masuk-keluar harian" subtitle={monthLabel(month)} />
+                <CardHeader title="Uang masuk-keluar harian" subtitle={monthLabel(month)} />
                 <div className="px-2 pt-2 pb-3">
                   <DailyFlowChart data={daily} />
                 </div>
               </Card>
               <Card>
                 <CardHeader
-                  title={`${scope === "expense" ? "Keluar kemana aja" : "Masuk dari mana aja"}`}
+                  title={`${scope === "expense" ? "Uang keluar ke mana saja" : "Uang masuk dari mana saja"}`}
                   subtitle={`${slices.length} kategori`}
                 />
                 <div className="px-2 pt-2 pb-3">
@@ -299,19 +299,19 @@ export default function AnalyticsPage() {
           {chartTab === "trends" && (
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
-                <CardHeader title="Perbandingan 6 bulan" subtitle="Masuk vs keluar" />
+                <CardHeader title="Perbandingan 6 bulan" subtitle="Uang masuk vs keluar" />
                 <div className="px-2 pt-2 pb-3">
                   <MonthlyCompareChart data={monthly} />
                 </div>
               </Card>
               <Card>
-                <CardHeader title="Tren sisa bulanan" subtitle="Masuk - keluar" />
+                <CardHeader title="Tren sisa bulanan" subtitle="Uang masuk - keluar" />
                 <div className="px-2 pt-2 pb-3">
                   <NetTrendChart data={monthly} />
                 </div>
               </Card>
               <Card className="lg:col-span-2">
-                <CardHeader title="Keluar per hari" subtitle="Pola mingguan" />
+                <CardHeader title="Uang keluar per hari" subtitle="Pola mingguan" />
                 <div className="px-2 pt-2 pb-3">
                   <WeekdayChart data={weekday} />
                 </div>

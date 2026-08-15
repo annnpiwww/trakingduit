@@ -62,8 +62,8 @@ export default function ScanPage() {
     if (quotaExhausted) {
       toast(
         ocr.unlimited
-          ? "Soft cap scan hari ini kesentuh (100x). Besok bisa lagi ya!"
-          : "Kuota scan hari ini habis. Upgrade buat scan lebih banyak!",
+          ? "Batas pemakaian scan hari ini sudah tercapai (100 kali). Besok bisa dipakai lagi, ya!"
+          : "Kuota scan hari ini habis. Upgrade kalau kamu mau scan lebih banyak!",
         "error",
       );
       if (!ocr.unlimited) router.push("/premium");
@@ -93,7 +93,7 @@ export default function ScanPage() {
       toast(
         parsed.total
           ? `Terbaca: ${formatIDR(parsed.total)}${parsed.merchant ? ` di ${parsed.merchant}` : ""}`
-          : "Nota terbaca, cek hasilnya",
+          : "Nota berhasil dibaca, cek hasilnya",
         parsed.total ? "success" : "info",
       );
     } catch (err) {
@@ -153,7 +153,7 @@ export default function ScanPage() {
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold tracking-tight">Scan struk belanja</h2>
             <p className="mt-1 text-xs text-muted">
-              Foto struknya, nominal sama nama toko bakal keisi otomatis. Bisa lo edit sebelum disimpen.
+              Foto struknya, nominal sama nama toko bakal keisi otomatis. Bisa kamu edit sebelum disimpen.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11px] text-muted">
               {ocr.unlimited ? (
@@ -448,7 +448,7 @@ function ReceiptDetail({
               {itemsMismatch ? (
                 <p className="flex items-start gap-2 border-t border-border bg-warn/10 px-3 py-2 text-xs text-warn">
                   <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
-                  Total item ({formatIDR(itemsSum)}) gak nyambung sama total struk ({formatIDR(p.total!)})
+                  Total item ({formatIDR(itemsSum)}) nggak nyambung sama total struk ({formatIDR(p.total!)})
                   — cek harga satuan, bisa salah baca digit.
                 </p>
               ) : null}

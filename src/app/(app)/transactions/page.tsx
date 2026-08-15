@@ -301,7 +301,7 @@ export default function TransactionsPage() {
         ) : (
           <EmptyState
             icon={ListOrdered}
-            title="Ga ada transaksi"
+            title="Belum ada transaksi"
             description={
               activeFilters ? "Coba longgarkan filter." : "Belum ada catatan bulan ini."
             }

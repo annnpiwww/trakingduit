@@ -18,7 +18,7 @@ const Body = z.object({
 export async function POST(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json(
-      { error: "Supabase belum dikonfigurasi - aplikasi berjalan mode lokal" },
+      { error: "Supabase belum diatur - aplikasi berjalan mode lokal" },
       { status: 501 },
     );
   }

@@ -100,7 +100,7 @@ export function DebtSheet({
       open={open}
       onClose={onClose}
       title={debt ? "Edit Catatan" : "Catat Utang Piutang"}
-      description="Utang = lo yang minjem, Piutang = orang minjem ke lo"
+      description="Utang = uang yang kamu pinjam, piutang = uang yang dipinjam orang dari kamu"
       footer={
         <Button className="w-full" size="lg" onClick={save} disabled={!person.trim() || parseAmount(amount) <= 0}>
           Simpan
@@ -118,7 +118,7 @@ export function DebtSheet({
           ]}
         />
 
-        <Field label="Nama orang" hint="Siapa yang ngutang / yang lo utangi">
+        <Field label="Nama orang" hint="Siapa yang berutang atau siapa yang kamu pinjami">
           <Input
             value={person}
             onChange={(e) => setPerson(e.target.value)}
@@ -147,12 +147,12 @@ export function DebtSheet({
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="cth. Sisa belanja bareng, udah janji bayar bulan depan"
+            placeholder="Contoh: sisa patungan, sudah janji bayar bulan depan"
             rows={2}
           />
         </Field>
 
-        <Field label="Dompet" hint="Dipakai kalau transaksi otomatis aktif">
+        <Field label="Dompet" hint="Dipakai saat transaksi otomatis diaktifkan">
           <Select value={walletId} onChange={(e) => setWalletId(e.target.value)}>
             {wallets.length === 0 ? <option value="">Belum ada dompet</option> : null}
             {wallets.map((w) => (
@@ -166,7 +166,7 @@ export function DebtSheet({
         <Toggle
           checked={autoTx}
           onChange={setAutoTx}
-          label="Catat otomatis jadi transaksi saat bayar/terima"
+          label="Otomatis dicatat sebagai transaksi saat dibayar atau diterima"
         />
       </div>
     </Sheet>

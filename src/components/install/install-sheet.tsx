@@ -20,7 +20,7 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
         </div>
         <ul className="space-y-2">
           <Benefit title="Buka lebih cepat" desc="Langsung kebuka dari home screen, tanpa buka browser dulu." />
-          <Benefit title="Bisa dipakai offline" desc="Catat transaksi walau lagi nggak ada sinyal." />
+          <Benefit title="Bisa dipakai offline" desc="Catat transaksi walau sedang nggak ada sinyal." />
           <Benefit title="Kaya app beneran" desc="Tampilan fullscreen, nggak ada address bar browser." />
         </ul>
         <InstallPrompt />

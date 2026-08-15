@@ -8,7 +8,7 @@ import { InstallPrompt } from "@/components/install/install-prompt";
 import { cn } from "@/lib/utils";
 import { usePWAInstall } from "@/lib/use-pwa-install";
 
-// Bump versi key tiap tutorial dirombak signifikan, biar yang udah pernah
+// Bump versi key tiap tutorial dirombak signifikan, biar yang sudah pernah
 // lihat versi lama tetap dapat tutorial baru sekali lagi.
 const ONBOARD_KEY = "td.onboarded.v2";
 
@@ -27,30 +27,30 @@ const BASE_STEPS: TourStep[] = [
   {
     sel: "[data-tour='balance']",
     icon: WalletCards,
-    title: "Ini saldo lo",
-    body: "Total saldo semua dompet lo dalam satu kartu. Pencet ikon mata buat nyembunyiin nominal, chip mood nunjukin kondisi duit lo bulan ini.",
-    tip: "Saldo auto-update tiap lo catat transaksi.",
+    title: "Ini saldo kamu",
+    body: "Total saldo semua dompet kamu dalam satu kartu. Tekan ikon mata untuk menyembunyikan nominal; chip mood menunjukkan kondisi uang kamu bulan ini.",
+    tip: "Saldo otomatis diperbarui setiap kamu mencatat transaksi.",
   },
   {
     sel: "[data-tour='tile-debts']",
     icon: HandCoins,
     title: "Fitur baru: Utang Piutang",
-    body: "Shortcut ini ngebuka halaman utang piutang. Catat siapa yang minjem ke lo (piutang) atau yang lo utangi (utang), lengkap sama jatuh tempo.",
+    body: "Shortcut ini membuka halaman utang-piutang. Catat siapa yang meminjam dari kamu atau siapa yang kamu pinjami, lengkap dengan tanggal jatuh tempo.",
     tip: "Sekali bayar/terima, transaksinya langsung kebuat otomatis.",
   },
   {
     sel: "[data-tour='tradu']",
     icon: Sparkles,
     title: "Tanya Tradu ✨",
-    body: "Asisten AI buat ngobrolin duit lo. Roast pengeluaran, tips nabung, sampe bantu baca laporan keuangan.",
+    body: "Asisten AI untuk ngobrolin uang kamu. Bisa bantu membedah pengeluaran, memberi tips menabung, sampai membaca laporan keuangan.",
     tip: "Klik kartu ini kapan aja buat mulai chat.",
   },
   {
     sel: "[data-tour='add']",
     icon: ListPlus,
     title: "Catat transaksi",
-    body: "Tombol ini buat catat pemasukan, pengeluaran, atau transfer antar dompet dalam hitungan detik.",
-    tip: "Pake kategori biar laporan bulanan lo rapi.",
+    body: "Tombol ini untuk mencatat pemasukan, pengeluaran, atau transfer antar-dompet dalam hitungan detik.",
+    tip: "Pakai kategori biar laporan bulanan kamu rapi.",
   },
   {
     icon: MonitorSmartphone,
@@ -62,8 +62,8 @@ const BASE_STEPS: TourStep[] = [
   {
     icon: Sparkles,
     title: "Siap mulai! 🚀",
-    body: "Lo udah kenal fitur utama. Scan struk, tagihan, budget, target nabung, dan analisis nunggu di menu.",
-    tip: "Data lo aman di perangkat & bisa sync ke cloud.",
+    body: "Kamu sudah kenal fitur utama. Scan struk, tagihan, budget, target tabungan, dan analisis tersedia di menu.",
+    tip: "Data kamu tetap tersimpan di perangkat dan bisa disinkron ke cloud.",
   },
 ];
 
@@ -109,7 +109,7 @@ export function OnboardingTutorial() {
   const [step, setStep] = React.useState(0);
   const [rect, setRect] = React.useState<Rect | null>(null);
   const [ready, setReady] = React.useState(false);
-  // Skip step install PWA kalau udah jalan sebagai app (standalone).
+  // Skip step install PWA kalau sudah jalan sebagai app (standalone).
   const steps = React.useMemo(
     () => (status === "installed" ? BASE_STEPS.filter((s) => !s.install) : BASE_STEPS),
     [status],

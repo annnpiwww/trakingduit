@@ -59,9 +59,9 @@ const AUTO_SYNC_BADGE: Record<
   AutoSyncState,
   { label: string; tone: React.ComponentProps<typeof Badge>["tone"] }
 > = {
-  disabled: { label: "Belum diset", tone: "neutral" },
+  disabled: { label: "Belum diatur", tone: "neutral" },
   local: { label: "Mode offline", tone: "warn" },
-  idle: { label: "Udah sync", tone: "brand" },
+  idle: { label: "Sudah sync", tone: "brand" },
   syncing: { label: "Lagi sync...", tone: "brand" },
   offline: { label: "Offline", tone: "warn" },
   error: { label: "Gagal sync", tone: "expense" },
@@ -200,7 +200,7 @@ export default function SettingsPage() {
 
   async function downloadBackup() {
     if (tier === "free") {
-      toast("Unduh backup buat member Premium. Upgrade di Menu > Premium", "error");
+      toast("Unduh backup khusus member Premium. Upgrade lewat Menu > Premium", "error");
       return;
     }
     const json = await exportBackup();
@@ -346,7 +346,7 @@ export default function SettingsPage() {
 
       {/* Sync */}
       <Card>
-        <CardHeader title="Sinkronisasi" subtitle="Spreadsheet & cloud" />
+        <CardHeader title="Sinkron" subtitle="Spreadsheet & cloud" />
         <div className="divide-y divide-border">
           <div className="flex flex-wrap items-center gap-3 p-4">
             <span className="grid size-10 place-items-center rounded-full bg-income/10 text-income">
@@ -356,7 +356,7 @@ export default function SettingsPage() {
               <p className="flex items-center gap-2 text-sm font-medium">
                 Google Spreadsheet
                 <Badge tone={sheetStatus?.connected ? "income" : "neutral"}>
-                  {sheetStatus?.connected ? "Terhubung" : "Belum diset"}
+                  {sheetStatus?.connected ? "Terhubung" : "Belum diatur"}
                 </Badge>
               </p>
               <p className="mt-0.5 truncate text-xs text-muted">
@@ -394,10 +394,10 @@ export default function SettingsPage() {
                   : autoSync.state === "error"
                     ? (autoSync.error ?? "Sinkron gagal, mencoba lagi otomatis")
                     : autoSync.state === "local"
-                      ? "Login lewat Akun Cloud supaya data tersimpan di server"
+                      ? "Masuk lewat Akun Cloud supaya data tersimpan di server"
                       : syncedAt
                         ? `Sinkron otomatis tiap menit · terakhir ${formatDate(syncedAt)}`
-                        : "Sinkron otomatis aktif · belum pernah sinkron"}
+                        : "Sinkron otomatis aktif · belum pernah dijalankan"}
               </p>
             </div>
             <Button
@@ -413,7 +413,7 @@ export default function SettingsPage() {
 
         {logs.length ? (
           <div className="border-t border-border px-4 py-3">
-            <p className="mb-2 text-xs font-medium text-muted">Log sinkronisasi</p>
+            <p className="mb-2 text-xs font-medium text-muted">Log sinkron</p>
             <ul className="space-y-1 text-[11px]">
               {logs.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
@@ -692,7 +692,7 @@ function CategorySheet({ open, onClose }: { open: boolean; onClose: () => void }
       (c) => !c.deleted && c.type === type && c.name.toLowerCase() === clean.toLowerCase(),
     );
     if (dup) {
-      toast("Kategori itu udah ada", "error");
+      toast("Kategori itu sudah ada", "error");
       return;
     }
     await createCategory({

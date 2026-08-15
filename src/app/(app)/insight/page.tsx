@@ -85,7 +85,7 @@ export default function InsightPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight">Insight</h1>
-          <p className="text-xs text-muted">Analisa otomatis pola keuangan lo</p>
+          <p className="text-xs text-muted">Analisa otomatis pola keuangan kamu</p>
         </div>
         <MonthSwitcher value={month} onChange={setMonth} className="self-start sm:self-auto" />
       </div>

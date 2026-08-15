@@ -20,10 +20,10 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  "Duitku aman gak bulan ini?",
-  "Kategori mana yang paling bikin tekor?",
+  "Uangku aman nggak bulan ini?",
+  "Kategori mana yang paling bikin boros?",
   "Kasih tips hemat minggu ini dong",
-  "Cara capai target nabung gimana?",
+  "Cara capai target menabung gimana?",
 ];
 
 export function TraduChat({
@@ -66,7 +66,7 @@ export function TraduChat({
   }, [month], []);
 
   // Konteks tambahan biar Tradu bisa analisis lebih dalam: rata-rata harian,
-  // proyeksi akhir bulan, perbandingan bulan lalu, budget usage, tagihan.
+  // perkiraan akhir bulan, perbandingan bulan lalu, budget usage, tagihan.
   const lastMonth = React.useMemo(() => {
     const [y, m] = month.split("-").map(Number);
     const d = new Date(y, m - 2, 1);
@@ -165,7 +165,7 @@ export function TraduChat({
           id: "welcome",
           role: "assistant",
           content:
-            "Halo! Aku Tradu, asisten keuangankamu. Butuh analisis keuangan, saran hemat, atau tips kelola anggaran? Sini sharing bareng aku! 😊",
+            "Halo! Aku Tradu, asisten keuangan kamu. Butuh analisis keuangan, saran hemat, atau tips mengatur budget? Cerita saja, aku bantu.",
         },
       ]);
     }
@@ -184,8 +184,8 @@ export function TraduChat({
             id: `a-${Date.now()}`,
             role: "assistant",
             content: tradu.unlimited
-              ? "Soft cap Tradu hari ini udah kesentuh (200 pesan). Besok bisa lanjut lagi ya! ✨"
-              : "Kuota Tradu hari ini udah habis nih. Upgrade ke Premium biar bisa lanjut ngobrol terus! ✨",
+              ? "Batas pemakaian Tradu hari ini sudah tercapai (200 pesan). Besok bisa lanjut lagi, ya!"
+              : "Kuota Tradu hari ini sudah habis. Upgrade ke Premium kalau kamu mau lanjut ngobrol!",
           },
         ]);
         return;
@@ -206,7 +206,7 @@ export function TraduChat({
             "Content-Type": "application/json",
             ...(token ? { Authorization: "Bearer " + token } : {}),
           },
-          // Server punya deadline 55s; client abort di 60s biar user gak
+          // Server punya deadline 55s; client abort di 60s biar user nggak
           // nunggu selamanya kalau semua jalur AI hang.
           signal: AbortSignal.timeout(60_000),
           body: JSON.stringify({
@@ -281,7 +281,7 @@ export function TraduChat({
             id: `a-${Date.now()}`,
             role: "assistant",
             content: isAuth
-              ? "Maaf, koneksi AI Tradu ditolak — API key-nya belum di-update. Kabarin admin biar segera dibenerin ya~ 🙏"
+              ? "Maaf, koneksi AI Tradu sedang bermasalah karena pengaturan server belum diperbarui. Kabari admin supaya bisa segera diperbaiki, ya."
               : isTimeout
                 ? "Tradu lagi lama mikir nih, coba lagi yaa~"
                 : "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",

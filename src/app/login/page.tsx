@@ -42,7 +42,7 @@ export default function LoginPage() {
       if (mode === "cloud") {
         await signInSupabase(email.trim(), password, cloudMode);
       } else {
-        if (pin && !/^\d{6}$/.test(pin)) throw new Error("PIN-nya 6 digit angka ya");
+        if (pin && !/^\d{6}$/.test(pin)) throw new Error("PIN-nya 6 digit angka, ya");
         await signInLocal(name, pin || undefined);
       }
       router.replace("/dashboard");
@@ -55,7 +55,7 @@ export default function LoginPage() {
           setError(err.message);
         }
       } else {
-        setError("Gagal masuk nih");
+        setError("Yah, gagal masuk");
       }
     } finally {
       setBusy(false);
@@ -101,8 +101,8 @@ export default function LoginPage() {
         <form onSubmit={submit} className="space-y-4 rounded-3xl bg-surface p-6 shadow-(--shadow-pop)">
           <p className="text-xs text-muted">
             {supabaseEnabled
-              ? "Pake akun buat sync di semua device, atau mode offline aja."
-              : "Mode offline aktif - data lo cuma ada di browser ini."}
+              ? "Pakai akun untuk sinkron di semua perangkat, atau lanjut dalam mode offline."
+              : "Mode offline aktif — data kamu hanya tersimpan di browser ini."}
           </p>
 
           {supabaseEnabled ? (
@@ -111,7 +111,7 @@ export default function LoginPage() {
               value={mode}
               onChange={setMode}
               options={[
-                { value: "cloud", label: "Pake Akun" },
+                { value: "cloud", label: "Pakai Akun" },
                 { value: "local", label: "Offline Aja" },
               ]}
             />
@@ -143,16 +143,16 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <Field label="Nama lo">
+              <Field label="Nama kamu">
                 <Input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Nama kamu siapa?"
+                  placeholder="Kamu mau dipanggil siapa?"
                   autoComplete="nickname"
                 />
               </Field>
-              <Field label="PIN 6 digit (kalo mau)" hint="Opsional - biar aman banget.">
+              <Field label="PIN 6 digit (kalau mau)" hint="Opsional - biar aman banget.">
                 <Input
                   inputMode="numeric"
                   maxLength={6}
@@ -185,7 +185,7 @@ export default function LoginPage() {
               onClick={() => setCloudMode((m) => (m === "login" ? "register" : "login"))}
               className="w-full text-center text-xs text-muted transition hover:text-fg"
             >
-              {cloudMode === "login" ? "Belum punya akun? Daftar di sini" : "Udah punya akun? Masuk aja"}
+              {cloudMode === "login" ? "Belum punya akun? Daftar di sini" : "Sudah punya akun? Masuk saja"}
             </button>
           ) : null}
         </form>

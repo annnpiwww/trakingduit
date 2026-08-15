@@ -10,7 +10,7 @@ import { syncQuotaFromUser } from "./subscription";
 
 const PROFILE_ID = "me";
 const UNLOCK_KEY = "td.unlocked";
-const UNLOCK_TIMEOUT = 15 * 60 * 1000; // 15 minutes auto-lock
+const UNLOCK_TIMEOUT = 15 * 60 * 1000; // 15 minutes otomatis-lock
 
 // Simple obfuscation untuk unlock state (bukan enkripsi penuh, tapi lebih baik dari plain "1")
 function createUnlockToken(): string {
@@ -113,7 +113,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signInSupabase = React.useCallback(
     async (email: string, password: string, mode: "login" | "register") => {
       const sb = supabaseBrowser();
-      if (!sb) throw new Error("Supabase belum dikonfigurasi");
+      if (!sb) throw new Error("Supabase belum diatur");
       const { data, error } =
         mode === "login"
           ? await sb.auth.signInWithPassword({ email, password })
@@ -155,7 +155,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           await syncSupabase({ silent: true });
         } catch (e) {
-          console.error("Gagal menarik data awal pasca login:", e);
+          console.error("Gagal mengambil data awal setelah masuk:", e);
         }
       }
 
@@ -248,8 +248,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // sempat sync (prevMs = 0) → edit lokal tetap di-push (LWW normal).
             if (prevMs > 0 && cloudMs > prevMs && cloudProfile) {
               // Cloud lebih baru dari base lokal → adopsi versi cloud ke Dexie +
-              // session, biar edit stale di device ini gak nge-overwrite nama/
-              // avatar yang diedit di device lain (dan sync berikutnya gak
+              // session, biar edit stale di device ini nggak nge-overwrite nama/
+              // avatar yang diedit di device lain (dan sync berikutnya nggak
               // nge-push ulang versi lokal yang sudah kalah).
               const adopted: UserProfile = {
                 ...next,
@@ -265,7 +265,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             if (cloudMs <= prevMs) {
               // avatar_url fallback ke cloud: edit nama aja jangan null-kan
               // avatar yang di-upload di device lain. Key di-omit kalau kolom
-              // belum ada di remote (schema legacy) biar PostgREST gak error.
+              // belum ada di remote (schema legacy) biar PostgREST nggak error.
               const payload: Record<string, unknown> = {
                 id: next.supabase_user_id,
                 name: next.name,
@@ -277,7 +277,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               await sb.from("profiles").upsert(payload, { onConflict: "id" });
             }
           } catch (e) {
-            console.error("Gagal push profil ke cloud:", e);
+            console.error("Gagal mengirim profil ke cloud:", e);
           }
         }
       }

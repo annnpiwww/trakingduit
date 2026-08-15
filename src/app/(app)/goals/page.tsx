@@ -60,7 +60,7 @@ export default function GoalsPage() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Total target" value={totalTarget} />
-        <StatTile label="Udah terkumpul" value={totalSaved} tone="income" />
+        <StatTile label="Sudah terkumpul" value={totalSaved} tone="income" />
         <StatTile label="Kurang" value={Math.max(0, totalTarget - totalSaved)} tone="expense" />
         <StatTile
           label="Progress"
@@ -139,10 +139,10 @@ export default function GoalsPage() {
                         ? `${daysLeft} hari lagi`
                         : daysLeft === 0
                           ? "Deadline hari ini"
-                          : "Udah lewat deadline"}
+                          : "Sudah lewat deadline"}
                     </span>
                   ) : null}
-                  {perMonth > 0 ? <span>· nabung {formatIDR(perMonth)}/bulan</span> : null}
+                  {perMonth > 0 ? <span>· menabung {formatIDR(perMonth)}/bulan</span> : null}
                 </div>
 
                 <div className="mt-3 flex gap-2">
@@ -171,7 +171,7 @@ export default function GoalsPage() {
           <EmptyState
             icon={Target}
             title="Belum ada target tabungan"
-            description="Buat target seperti dana darurat, liburan, atau DP rumah."
+            description="Buat target seperti dana darurat, liburan, atau uang muka rumah."
             action={
               <Button
                 size="sm"

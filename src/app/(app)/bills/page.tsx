@@ -143,7 +143,7 @@ export default function BillsPage() {
         />
         <StatTile label="Sisa Gaji" value={mask(remainingSalary)} tone={remainingSalary >= 0 ? "income" : "expense"} />
         <StatTile label="Persentase" value={`${Math.round(salaryPercent)}%`} tone={salaryPercent > 100 ? "expense" : salaryPercent < 50 ? "income" : "brand"} />
-        <StatTile label="Deadline ≤7 hari" value={`${dueSoon.length}`} tone="brand" />
+        <StatTile label="Jatuh tempo ≤7 hari" value={`${dueSoon.length}`} tone="brand" />
       </div>
 
       {!salary && (
@@ -158,7 +158,7 @@ export default function BillsPage() {
 
       {salary && salaryPercent > 100 && (
         <Card className="border-expense/20 bg-expense/10 p-3 text-xs font-medium text-expense">
-          Duh, total tagihan udah lebih gede dari gaji kamu bulan ini! ({Math.round(salaryPercent)}%)
+          Duh, total tagihan sudah lebih gede dari gaji kamu bulan ini! ({Math.round(salaryPercent)}%)
         </Card>
       )}
       {salary && salaryPercent >= 50 && salaryPercent <= 100 && (
@@ -200,7 +200,7 @@ export default function BillsPage() {
           className="text-[10px] sm:text-xs md:text-sm h-9 sm:h-10 px-2 sm:px-4 flex-1 sm:flex-none"
           onClick={async () => {
             const n = await runBillReminderScan();
-            toast(n ? `${n} pengingat dibuat` : "Tidak ada pengingat baru", "success");
+            toast(n ? `${n} pengingat dibuat` : "Belum ada pengingat baru", "success");
           }}
         >
           <BellRing className="size-3 sm:size-4 shrink-0" /> 
@@ -226,7 +226,7 @@ export default function BillsPage() {
               onChange={setFilterType}
               options={[
                 { value: "all", label: `Semua (${active.length})` },
-                { value: "regular", label: `Tagihan Biasa (${active.filter(b => !b.is_installment).length})` },
+                { value: "regular", label: `Tagihan rutin (${active.filter(b => !b.is_installment).length})` },
                 { value: "installment", label: `Cicilan (${active.filter(b => b.is_installment).length})` },
               ]}
             />
@@ -386,7 +386,7 @@ export default function BillsPage() {
           <EmptyState
             icon={CalendarClock}
             title="Belum ada tagihan"
-            description="Catat listrik, internet, cicilan, atau langganan supaya tidak telat bayar."
+            description="Catat listrik, internet, cicilan, atau langganan supaya tidak terlambat bayar."
             action={
               <Button
                 size="sm"
@@ -552,7 +552,7 @@ function BillSheet({
             value={isInstallment ? "installment" : "regular"}
             onChange={(v) => setIsInstallment(v === "installment")}
             options={[
-              { value: "regular", label: "Tagihan Biasa" },
+              { value: "regular", label: "Tagihan rutin" },
               { value: "installment", label: "Cicilan" },
             ]}
           />

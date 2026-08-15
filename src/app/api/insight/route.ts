@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
   if (!API_URL || !API_KEY) {
     return NextResponse.json(
-      { error: "API Key belum diset", fallback: "rules" },
+      { error: "API Key belum diatur", fallback: "rules" },
       { status: 501 },
     );
   }

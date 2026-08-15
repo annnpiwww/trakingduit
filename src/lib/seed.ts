@@ -4,7 +4,7 @@ type CategorySeed = Pick<Category, "id" | "name" | "type" | "icon" | "color" | "
 type WalletSeed = Pick<Wallet, "id" | "name" | "type" | "initial_balance" | "currency" | "color" | "icon">;
 
 /**
- * `keywords` drive both OCR merchant→category matching and auto-categorize on
+ * `keywords` drive both OCR merchant→category matching and otomatis-categorize on
  * manual entry. Lowercase, Indonesian-first.
  */
 export const DEFAULT_CATEGORIES: CategorySeed[] = [
