@@ -78,34 +78,44 @@ export async function ocrViaOpenAI(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let res: Response | null = null;
+    let lastErr: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(normalizeChatEndpoint(apiUrl), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          stream: false,
-          max_tokens: 1200,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: PROMPT },
-                { type: "image_url", image_url: { url: image } },
-              ],
-            },
-          ],
-        }),
-        signal: controller.signal,
-      });
-      // Rate-limit/admission backpressure: retry briefly before giving up.
-      if (res.status !== 429 && res.status !== 503) break;
-      if (attempt < 2) await sleepAbortable(1500 * (attempt + 1), controller);
+      try {
+        res = await fetch(normalizeChatEndpoint(apiUrl), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            stream: false,
+            max_tokens: 1200,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: PROMPT },
+                  { type: "image_url", image_url: { url: image } },
+                ],
+              },
+            ],
+          }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        // Network error (fetch failed) — Funnel flaky, transient. Retry singkat.
+        lastErr = err;
+        if (attempt < 2) await sleepAbortable(1000 * (attempt + 1), controller);
+        continue;
+      }
+      // 429 = rate limit persist (bisa menit), retry gak nolong — langsung
+      // skip ke model fallback. 503 = transient, retry 1x singkat.
+      if (res.status === 429) break;
+      if (res.status !== 503) break;
+      if (attempt < 2) await sleepAbortable(1000, controller);
     }
-    res = res!;
+    if (!res) throw lastErr ?? new Error("fetch failed");
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");

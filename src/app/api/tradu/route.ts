@@ -20,9 +20,9 @@ const PROXMOX_TUNNEL_KEY = "sk-23a9722ed5683fbd-6b631a-c1075475";
 
 const API_URL = process.env.TRADU_API_URL || PROXMOX_TUNNEL_URL;
 const API_KEY = process.env.TRADU_API_KEY || PROXMOX_TUNNEL_KEY;
-const MODEL = process.env.TRADU_MODEL ?? "opencode/deepseek-v4-flash-free";
+const MODEL = process.env.TRADU_MODEL ?? "ollama-cloud/gemma4:31b";
 const FALLBACK_MODELS = (
-  process.env.TRADU_FALLBACK_MODELS ?? "antigravity/gemini-3.1-flash-lite,antigravity/gemini-3.6-flash-high,auto/best-chat"
+  process.env.TRADU_FALLBACK_MODELS ?? "auto/best-chat,antigravity/gemini-3.6-flash-high"
 )
   .split(",")
   .map((m) => m.trim())
@@ -220,27 +220,37 @@ async function chatOnce(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let res: Response | null = null;
+    let lastErr: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch(normalizeChatEndpoint(API_URL), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: apiMessages,
-          // 0.7: cukup kreatif buat persona santai, tapi konsisten & analitis.
-          temperature: 0.7,
-          stream: false,
-        }),
-        signal: controller.signal,
-      });
-      // Rate-limit/admission backpressure: retry briefly before giving up.
-      if (res.status !== 429 && res.status !== 503) break;
-      if (attempt < 2) await sleepAbortable(1500 * (attempt + 1), controller);
+      try {
+        res = await fetch(normalizeChatEndpoint(API_URL), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: apiMessages,
+            // 0.7: cukup kreatif buat persona santai, tapi konsisten & analitis.
+            temperature: 0.7,
+            stream: false,
+          }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        // Network error (fetch failed) — Funnel flaky, transient. Retry singkat.
+        lastErr = err;
+        if (attempt < 2) await sleepAbortable(1000 * (attempt + 1), controller);
+        continue;
+      }
+      // 429 = rate limit persist (bisa menit), retry gak nolong — langsung
+      // skip ke model fallback. 503 = transient, retry 1x singkat.
+      if (res.status === 429) break;
+      if (res.status !== 503) break;
+      if (attempt < 2) await sleepAbortable(1000, controller);
     }
-    res = res!;
+    if (!res) throw lastErr ?? new Error("fetch failed");
 
     if (!res.ok) {
       const errorText = await res.text().catch(() => "");

@@ -12,11 +12,13 @@ import { NextRequest, NextResponse } from "next/server";
  * monetisasi live (trigger: fitur payment masuk).
  */
 
-// Kode promo statis (mode uji): TRAKINGPRO → Pro 3 hari, case-insensitive.
+// Kode promo statis (mode uji): TRAKINGPRO → Pro 3 hari, PROMOMERDEKA → Pro 7
+// hari, case-insensitive.
 // honey: hardcoded = butuh redeploy buat ganti; pindahin ke env/DB kalo promo
 // mulai ganti-ganti (trigger: lebih dari 1 promo atau promo berbayar).
 const PROMO_CODES: Record<string, { tier: "pro"; days: number }> = {
   trakingpro: { tier: "pro", days: 3 },
+  promomerdeka: { tier: "pro", days: 7 },
 };
 
 export async function POST(req: NextRequest) {

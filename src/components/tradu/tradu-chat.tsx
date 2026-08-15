@@ -206,6 +206,9 @@ export function TraduChat({
             "Content-Type": "application/json",
             ...(token ? { Authorization: "Bearer " + token } : {}),
           },
+          // Server punya deadline 55s; client abort di 60s biar user gak
+          // nunggu selamanya kalau semua jalur AI hang.
+          signal: AbortSignal.timeout(60_000),
           body: JSON.stringify({
             messages: currentMessages.map((m) => ({
               role: m.role,
@@ -270,6 +273,8 @@ export function TraduChat({
         const msg = error instanceof Error ? error.message : "";
         const isAuth =
           msg.includes("401") || msg.includes("API key") || msg.includes("Unauthorized");
+        const isTimeout =
+          error instanceof DOMException && error.name === "TimeoutError";
         setMessages((prev) => [
           ...prev,
           {
@@ -277,7 +282,9 @@ export function TraduChat({
             role: "assistant",
             content: isAuth
               ? "Maaf, koneksi AI Tradu ditolak — API key-nya belum di-update. Kabarin admin biar segera dibenerin ya~ 🙏"
-              : "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
+              : isTimeout
+                ? "Tradu lagi lama mikir nih, coba lagi yaa~"
+                : "Maaf, Koneksi AI Tradu lagi bermasalah nih, coba lagi nanti yaa~",
           },
         ]);
       } finally {

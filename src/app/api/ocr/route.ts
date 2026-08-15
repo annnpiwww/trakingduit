@@ -82,8 +82,10 @@ export async function POST(request: Request) {
       }
       errors.push(`${model}: teks kosong`);
     } catch (err) {
-      errors.push(`${model}: ${err instanceof Error ? err.message : String(err)}`);
-      console.error(`OCR model ${model} gagal:`, err instanceof Error ? err.message : err);
+      const e = err instanceof Error ? err : new Error(String(err));
+      const cause = (e as any).cause?.code ?? (e as any).cause?.message ?? "";
+      errors.push(`${model}: ${e.message}${cause ? ` (${cause})` : ""}`);
+      console.error(`OCR model ${model} gagal:`, e.message, "| cause:", cause);
     }
   }
 
