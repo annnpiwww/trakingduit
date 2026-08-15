@@ -8,11 +8,8 @@ export const maxDuration = 60;
 
 // AI OCR endpoint — OpenAI-compatible vision (mis. OmniRoute via Tailscale Funnel).
 // Di-set via env (OCR_API_URL / OCR_API_KEY / OCR_MODEL) — jangan hardcode.
-const PROXMOX_TUNNEL_URL = "https://hermesagent.tailcb6f2e.ts.net/v1";
-const PROXMOX_TUNNEL_KEY = "sk-23a9722ed5683fbd-6b631a-c1075475";
-
-const OCR_URL = process.env.OCR_API_URL || PROXMOX_TUNNEL_URL;
-const OCR_API_KEY = process.env.OCR_API_KEY || PROXMOX_TUNNEL_KEY;
+const OCR_URL = process.env.OCR_API_URL;
+const OCR_API_KEY = process.env.OCR_API_KEY;
 const OCR_MODEL = process.env.OCR_MODEL ?? "ollama-cloud/gemma4:31b";
 // Chain cadangan, koma-pisah, dicoba berurutan kalau model utama gagal/rate-limit.
 const OCR_FALLBACK_MODELS = (

@@ -15,11 +15,8 @@ export const maxDuration = 60;
 //   GEMINI_TRADU_MODEL      -> default "gemini-3.5-flash"
 import { normalizeChatEndpoint } from "@/lib/ocr/prompt";
 
-const PROXMOX_TUNNEL_URL = "https://hermesagent.tailcb6f2e.ts.net/v1";
-const PROXMOX_TUNNEL_KEY = "sk-23a9722ed5683fbd-6b631a-c1075475";
-
-const API_URL = process.env.TRADU_API_URL || PROXMOX_TUNNEL_URL;
-const API_KEY = process.env.TRADU_API_KEY || PROXMOX_TUNNEL_KEY;
+const API_URL = process.env.TRADU_API_URL;
+const API_KEY = process.env.TRADU_API_KEY;
 const MODEL = process.env.TRADU_MODEL ?? "ollama-cloud/gemma4:31b";
 const FALLBACK_MODELS = (
   process.env.TRADU_FALLBACK_MODELS ?? "auto/best-chat,antigravity/gemini-3.6-flash-high"
@@ -223,6 +220,7 @@ async function chatOnce(
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        if (!API_URL) throw new Error("API_URL belum diset");
         res = await fetch(normalizeChatEndpoint(API_URL), {
           method: "POST",
           headers: {
