@@ -46,6 +46,9 @@ export function TraduChat({
   const categories = useLiveQuery(() => db().categories.filter((c) => !c.deleted).toArray(), [], []);
   const budgets = useLiveQuery(() => db().budgets.filter((b) => !b.deleted).toArray(), [], []);
   const bills = useLiveQuery(() => db().bills.filter((b) => !b.deleted && !b.archived).toArray(), [], []);
+  const debts = useLiveQuery(() => db().debts.filter((d) => !d.deleted).toArray(), [], []);
+  const goals = useLiveQuery(() => db().goals.filter((g) => !g.deleted && !g.archived).toArray(), [], []);
+  const wallets = useLiveQuery(() => db().wallets.filter((w) => !w.deleted && !w.archived).toArray(), [], []);
   const balances = useLiveQuery(
     async () => {
       await db().transactions.count();
@@ -65,8 +68,6 @@ export function TraduChat({
       .toArray();
   }, [month], []);
 
-  // Konteks tambahan biar Tradu bisa analisis lebih dalam: rata-rata harian,
-  // proyeksi akhir bulan, perbandingan bulan lalu, budget usage, tagihan.
   const lastMonth = React.useMemo(() => {
     const [y, m] = month.split("-").map(Number);
     const d = new Date(y, m - 2, 1);
@@ -84,14 +85,49 @@ export function TraduChat({
 
   const totalBalance = Object.values(balances).reduce((a, b) => a + b, 0);
   const t = totals(monthTx);
-
-  const nowDay = Number(toDateKey().slice(-2));
-  const daysInMonth = Number(monthRange(month).to.slice(-2));
-  const avgDailySpend = t.expense > 0 ? t.expense / Math.max(1, nowDay) : 0;
-  const projectedMonthEnd = avgDailySpend * daysInMonth;
   const lastMonthExpense = totals(lastMonthTx).expense;
-  const lastMonthDelta =
-    lastMonthExpense > 0 || t.expense > 0 ? t.expense - lastMonthExpense : undefined;
+
+  const walletsList = React.useMemo(() => {
+    if (!wallets) return [];
+    return wallets.map((w) => ({
+      name: w.name,
+      type: w.type,
+      balance: balances[w.id] ?? 0,
+    }));
+  }, [wallets, balances]);
+
+  const debtsList = React.useMemo(() => {
+    if (!debts) return [];
+    return debts.map((d) => ({
+      person: d.person,
+      type: d.type === "payable" ? "Utang lo ke dia" : "Piutang (dia ngutang ke lo)",
+      amount: d.amount,
+      paid: d.paid_amount,
+      remaining: d.amount - d.paid_amount,
+      due_date: d.due_date ?? "Tidak ada",
+    }));
+  }, [debts]);
+
+  const goalsList = React.useMemo(() => {
+    if (!goals) return [];
+    return goals.map((g) => ({
+      name: g.name,
+      target: g.target_amount,
+      saved: g.saved_amount,
+      progress: g.target_amount > 0 ? Math.round((g.saved_amount / g.target_amount) * 100) : 0,
+      deadline: g.deadline ?? "Tidak ada",
+    }));
+  }, [goals]);
+
+  const billsList = React.useMemo(() => {
+    if (!bills) return [];
+    return bills.map((b) => ({
+      name: b.name,
+      amount: b.amount,
+      due_date: b.due_date,
+      repeat: b.repeat,
+    }));
+  }, [bills]);
 
   const budgetUsage = React.useMemo(() => {
     if (!budgets?.length || !allTx?.length) return [];
@@ -104,28 +140,24 @@ export function TraduChat({
     });
   }, [budgets, allTx, categories, month]);
 
-  const upcomingBills = React.useMemo(() => {
-    if (!bills?.length) return [];
-    const today = toDateKey();
-    return bills
-      .map((b) => {
-        const daysLeft = Math.round(
-          (new Date(b.due_date).getTime() - new Date(today).getTime()) / 86_400_000,
-        );
-        return { name: b.name, daysLeft };
-      })
-      .filter((b) => b.daysLeft >= 0 && b.daysLeft <= 7)
-      .sort((a, b) => a.daysLeft - b.daysLeft)
-      .slice(0, 3);
-  }, [bills]);
-
-  const recent = React.useMemo(
-    () =>
-      [...monthTx]
-        .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
-        .slice(0, 3),
-    [monthTx],
-  );
+  const recentTransactions = React.useMemo(() => {
+    if (!allTx) return [];
+    return [...allTx]
+      .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+      .slice(0, 50)
+      .map((tx) => {
+        const cat = categories?.find((c) => c.id === tx.category_id);
+        const w = wallets?.find((w) => w.id === tx.wallet_id);
+        return {
+          date: tx.date,
+          description: tx.merchant || tx.note || cat?.name || (tx.type === "income" ? "Pemasukan" : "Pengeluaran"),
+          category: cat?.name ?? "Lainnya",
+          wallet: w?.name ?? "Dompet",
+          type: tx.type,
+          amount: tx.amount,
+        };
+      });
+  }, [allTx, categories, wallets]);
 
   const topCategories = React.useMemo(() => {
     if (!monthTx || !categories) return [];
@@ -148,7 +180,7 @@ export function TraduChat({
         share: t.expense > 0 ? val.total / t.expense : 0,
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 3);
+      .slice(0, 5);
   }, [monthTx, categories, t.expense]);
 
   React.useEffect(() => {
@@ -219,23 +251,14 @@ export function TraduChat({
               income: t.income,
               expense: t.expense,
               net: t.net,
-              savingsRate: t.income > 0 ? t.net / t.income : 0,
-              avgDailySpend,
-              projectedMonthEnd,
               lastMonthExpense,
-              lastMonthDelta,
+              wallets: walletsList,
               budgetUsage,
-              upcomingBills,
+              bills: billsList,
+              debts: debtsList,
+              goals: goalsList,
               topCategories,
-              recentTransactions: recent.map((tx) => {
-                const cat = categories?.find((c) => c.id === tx.category_id);
-                return {
-                  date: tx.date,
-                  description: tx.merchant || cat?.name || (tx.type === "income" ? "Pemasukan" : "Pengeluaran"),
-                  type: tx.type,
-                  amount: tx.amount,
-                };
-              }),
+              recentTransactions,
             },
           }),
         });
@@ -299,14 +322,14 @@ export function TraduChat({
       t.income,
       t.expense,
       t.net,
-      topCategories,
-      recent,
-      avgDailySpend,
-      projectedMonthEnd,
       lastMonthExpense,
-      lastMonthDelta,
+      walletsList,
       budgetUsage,
-      upcomingBills,
+      billsList,
+      debtsList,
+      goalsList,
+      topCategories,
+      recentTransactions,
     ],
   );
 

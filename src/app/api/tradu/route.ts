@@ -54,48 +54,91 @@ export async function POST(req: Request) {
     const fmt = (n?: number) => (n == null ? "-" : `Rp${Math.round(n).toLocaleString("id-ID")}`);
     const pct = (n?: number) => (n == null ? "-" : `${Math.round(n * 100)}%`);
 
-    // Format financial details into a concise string for system prompt injection
+    const walletsStr = ctx.wallets?.length
+      ? ctx.wallets.map((w: any) => `- ${w.name} (${w.type}): ${fmt(w.balance)}`).join("\n")
+      : "- Belum ada dompet";
+
+    const budgetsStr = ctx.budgetUsage?.length
+      ? ctx.budgetUsage.map((b: any) => `- ${b.name}: ${pct(b.used)} terpakai dari budget`).join("\n")
+      : "- Tidak ada budget aktif";
+
+    const billsStr = ctx.bills?.length
+      ? ctx.bills.map((b: any) => `- ${b.name}: ${fmt(b.amount)} (Jatuh tempo: ${b.due_date})`).join("\n")
+      : "- Tidak ada tagihan aktif";
+
+    const debtsStr = ctx.debts?.length
+      ? ctx.debts.map((d: any) => `- ${d.person} [${d.type}]: sisa ${fmt(d.remaining)} dari total ${fmt(d.amount)} (Jatuh tempo: ${d.due_date})`).join("\n")
+      : "- Tidak ada utang/piutang";
+
+    const goalsStr = ctx.goals?.length
+      ? ctx.goals.map((g: any) => `- ${g.name}: terkumpul ${fmt(g.saved)} dari target ${fmt(g.target)} (${g.progress}%)`).join("\n")
+      : "- Tidak ada target tabungan";
+
+    const topCatStr = ctx.topCategories?.length
+      ? ctx.topCategories.map((c: any) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n")
+      : "- Belum ada data pengeluaran";
+
+    const txStr = ctx.recentTransactions?.length
+      ? ctx.recentTransactions
+          .slice(0, 50)
+          .map(
+            (tx: any) =>
+              `- [${tx.date}] ${tx.description} (${tx.category} via ${tx.wallet}) | ${tx.type === "expense" ? "Pengeluaran" : tx.type === "income" ? "Pemasukan" : "Transfer"}: ${fmt(tx.amount)}`
+          )
+          .join("\n")
+      : "- Belum ada riwayat transaksi";
+
     const balanceStr = `
-KONDISI KEUANGAN PENGGUNA (data real dari app, jadikan acuan analisis):
-- Total Saldo Semua Dompet: ${fmt(ctx.totalBalance)}
-- Pemasukan bulan ini: ${fmt(ctx.income)} · Pengeluaran: ${fmt(ctx.expense)} · Sisa: ${fmt(ctx.net)}
-- Rasio nabung bulan ini: ${pct(ctx.savingsRate)} · Rata-rata keluar/hari: ${fmt(ctx.avgDailySpend)}
-- Proyeksi pengeluaran akhir bulan (laju saat ini): ${fmt(ctx.projectedMonthEnd)}
-- Pengeluaran bulan lalu: ${fmt(ctx.lastMonthExpense)} (${ctx.lastMonthDelta == null ? "belum ada data" : ctx.lastMonthDelta >= 0 ? `naik ${fmt(ctx.lastMonthDelta)} dari bulan lalu` : `turun ${fmt(-ctx.lastMonthDelta)} dari bulan lalu`})
-- Budget aktif: ${ctx.budgetUsage?.length ? ctx.budgetUsage.map((b: any) => `${b.name} ${pct(b.used)}`).join(", ") : "tidak ada"}
-- Tagihan jatuh tempo ≤7 hari: ${ctx.upcomingBills?.length ? ctx.upcomingBills.map((b: any) => `${b.name} (${b.daysLeft === 0 ? "hari ini" : `${b.daysLeft} hari lagi`})`).join(", ") : "tidak ada"}
+DATA KEUANGAN PENGGUNA TERUPDATE (Gunakan data real ini secara presisi dan faktual):
 
-Top Kategori Pengeluaran Bulan Ini:
-${ctx.topCategories?.length ? ctx.topCategories.map((c: any) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n") : "- (Belum ada data pengeluaran)"}
+1. TOTAL SALDO & RINCIAN DOMPET:
+- Total Saldo Keseluruhan: ${fmt(ctx.totalBalance)}
+${walletsStr}
 
-Transaksi Terakhir:
-${ctx.recentTransactions?.length ? ctx.recentTransactions.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) ${fmt(tx.amount)}`).join("\n") : "- (Belum ada transaksi)"}
+2. RINGKASAN BULAN INI:
+- Pemasukan: ${fmt(ctx.income)}
+- Pengeluaran: ${fmt(ctx.expense)}
+- Sisa Duit (Net): ${fmt(ctx.net)}
+- Pengeluaran Bulan Lalu: ${fmt(ctx.lastMonthExpense)}
+
+3. KATEGORI PENGELUARAN TERBESAR BULAN INI:
+${topCatStr}
+
+4. STATUS BUDGET KATEGORI:
+${budgetsStr}
+
+5. TAGIHAN & CICILAN:
+${billsStr}
+
+6. UTANG & PIUTANG:
+${debtsStr}
+
+7. TARGET MENABUNG (GOALS):
+${goalsStr}
+
+8. RIWAYAT TRANSAKSI TERBARU (Hingga 50 transaksi terbaru lintas tanggal):
+${txStr}
 `;
 
-    const systemPrompt = `Kamu adalah Tradu, asisten keuangan pribadi yang cerdas, hangat, dan analitis untuk Gen Z Indonesia.
+    const systemPrompt = `Kamu adalah Tradu, asisten keuangan pribadi yang ramah, hangat, santai, dan peka data untuk pengguna aplikasi TrackingDuit.
 
-PERSONA & BAHASA:
-- Bahasa Indonesia santai, hangat, gaul ringan ("lo", "duit", "tekor") tapi tetap profesional — bukan sarkas, bukan menghakimi, tidak pernah nge-roast.
-- Empatik dan mendukung: fokus solusi, bukan nyalahin. Kalau pengguna boros, bantu cara memperbaikinya, bukan men-judge.
-- Jawab singkat padat: 3-5 kalimat per respons, langsung ke inti. Gunakan angka konkret dari data.
-- FORMAT PESAN: tulis semua teks polos. JANGAN gunakan markdown seperti **bold**, *italic*, atau \`code\`. Jangan pakai bullet list atau format lain. Cukup teks biasa aja.
+GAYA BAHASA & PERSONALITY:
+- Gunakan bahasa Indonesia santai, ramah, dan kasual (pakai "aku" dan "kamu" atau "lo").
+- DILARANG menggunakan kata-kata kaku/baku berlebihan seperti "proyeksi", "boncos", "anomali", "defisit", atau istilah akuntansi kaku. Tulis dengan gaya bahasa sehari-hari yang enak dibaca.
+- Selalu suportif, bersahabat, dan membantu tanpa menghakimi.
 
-CARA BERPIKIR (WAJIB — ini yang bikin kamu pintar):
-1. SELALU hitung & pakai angka dari data di atas sebelum menjawab. Contoh: rasio nabung, proporsi kategori, laju harian vs proyeksi.
-2. Deteksi anomali dan pola:
-   - Pengeluaran > pemasukan → langsung tandai risiko defisit.
-   - Satu kategori > 30% pengeluaran → sebutkan itu sebagai "biang tekor" dan kasih cara kurangi.
-   - Proyeksi akhir bulan > pemasukan → warning habis sebelum gajian.
-   - Kategori naik drastis dari bulan lalu → tanyakan/ingatkan.
-3. Beri rekomendasi yang SPESIFIK dan BISA DILAKUKAN (angka konkret, bukan nasihat umum):
-   - Contoh buruk: "kurangi pengeluaran".
-   - Contoh bagus: "Budget GoFood lo 800rb/bulan (32% pengeluaran). Coba turunin ke 500rb — hemat 300rb/bulan ≈ 3,6 jt/tahun."
-4. Kalau data kosong/minim, akui dengan jujur dan arahkan ke fitur ("catat transaksi dulu, nanti aku bisa analisis lebih dalam"). JANGAN mengarang angka.
-5. Bedakan fakta dari data vs asumsi: jangan klaim hal yang tidak ada di data.
+PRINSIP ANALISIS & PEKA DATA (SANGAT PENTING):
+1. BACA DATA REALITA: Kamu punya akses lengkap ke seluruh data keuangan pengguna di atas (saldo tiap dompet, riwayat transaksi hingga 50 transaksi terbaru, budget, tagihan, utang/piutang, dan target tabungan).
+2. JANGAN MEMBUAT ASUMSI NGAWUR ATAU BERANGAN-ANGAN:
+   - JANGAN mengalikan pengeluaran harian secara rata/mentah ke akhir bulan (misalnya berasumsi pengeluaran bakal mencapai 10 juta atau 300rb per hari tanpa bukti transaksi nyata).
+   - Bedakan pengeluaran besar satu kali (seperti sewa/tagihan/beli barang) dengan pengeluaran harian biasa.
+   - Jawab pertanyaan transaksi lama maupun baru secara akurat dari data riwayat transaksi di atas.
+3. PRESI PADA ANGKA: Bila memberikan analisis atau saran, selalu sebutkan angka pasti dari data (misal: "Kemarin ada pengeluaran Rp 33.000...").
+4. FORMAT: Jawab langsung, padat, dan jelas dalam 2-4 paragraf santai. Tulis teks biasa tanpa format markdown yang ribet.
 
 ${balanceStr}
 
-Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatkan data keuangan jika relevan.`;
+Tanggapi pertanyaan pengguna secara akurat berdasarkan seluruh data keuangan di atas.`;
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
