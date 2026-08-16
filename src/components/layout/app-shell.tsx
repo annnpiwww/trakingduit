@@ -43,7 +43,7 @@ const PRIMARY_NAV = [
   { href: "/dashboard", label: "Beranda", icon: LayoutGrid },
   { href: "/transactions", label: "Transaksi", icon: ListOrdered },
   { href: "/wallets", label: "Dompet", icon: WalletCards },
-  { href: "/analytics", label: "Analisis", icon: ChartPie },
+  { href: "/bills", label: "Tagihan", icon: CalendarClock },
 ];
 
 const SECONDARY_NAV = [
@@ -51,7 +51,7 @@ const SECONDARY_NAV = [
   { href: "/debts", label: "Utang Piutang", icon: HandCoins },
   { href: "/budgets", label: "Budget", icon: CreditCard },
   { href: "/goals", label: "Target", icon: Target },
-  { href: "/bills", label: "Tagihan", icon: CalendarClock },
+  { href: "/analytics", label: "Analisis", icon: ChartPie },
   { href: "/settings", label: "Pengaturan", icon: Settings },
 ];
 
