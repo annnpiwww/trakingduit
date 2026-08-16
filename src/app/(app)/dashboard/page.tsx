@@ -57,7 +57,7 @@ function computeMood(t: Totals): Mood {
   const sr = t.income > 0 ? t.net / t.income : 1;
   if (sr >= 0.3) return { emoji: "🤑", label: "Duit aman, gemes", tone: "good" };
   if (sr >= 0.1) return { emoji: "😌", label: "Aman, tahan dikit dong", tone: "warn" };
-  return { emoji: "🤏", label: "Nyaris abis, sabar", tone: "warn" };
+  return { emoji: "⚠️", label: "Waduh dikit lagi duitmu habis, jangan terlalu boros ya", tone: "warn" };
 }
 
 function MoodPill({ mood }: { mood: Mood }) {
