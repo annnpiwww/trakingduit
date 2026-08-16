@@ -14,6 +14,7 @@ import type {
   Transaction,
   Wallet,
 } from "./types";
+import { getBillPaymentTransactionId } from "./bill-metrics";
 import { newId, nowISO, toDateKey } from "./utils";
 
 type NewRow<T> = Omit<T, "id" | "created_at" | "updated_at" | "deleted"> &
@@ -406,15 +407,19 @@ export async function payBill(billId: ID, walletId?: ID) {
     const bill = await db().bills.get(billId);
     if (!bill) return;
 
+    const paymentDate = toDateKey();
+    if (bill.last_paid_at?.slice(0, 10) === paymentDate) return;
+
     const actualAmount = bill.is_installment ? (bill.installment_amount_per_period ?? bill.amount) : bill.amount;
 
     if (bill.auto_create_tx && (walletId || bill.wallet_id)) {
       await createTransaction({
+        id: getBillPaymentTransactionId(bill.id, paymentDate),
         type: "expense",
         amount: actualAmount,
         wallet_id: (walletId ?? bill.wallet_id)!,
         category_id: bill.category_id,
-        date: toDateKey(),
+        date: paymentDate,
         note: bill.is_installment 
           ? `Bayar cicilan: ${bill.name} (Ke-${(bill.installment_paid ?? 0) + 1} dari ${bill.installment_total ?? 1})`
           : `Bayar tagihan: ${bill.name}`,

@@ -34,7 +34,7 @@ function BenefitIcon({ text }: { text: string }) {
   const Icon = (key && BENEFIT_ICON[key]) || Check;
   return (
     <span className="grid size-5 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
-      <Icon className="size-3" />
+      {React.createElement(Icon, { className: "size-3" })}
     </span>
   );
 }

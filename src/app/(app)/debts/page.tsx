@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { deleteDebt } from "@/lib/repo";
 import type { Debt } from "@/lib/types";
 import { cn, daysBetween, formatDate, formatIDR, toDateKey } from "@/lib/utils";
+import { getDebtDueLabel } from "@/lib/debt-metrics";
 import {
   Badge,
   Button,
@@ -229,7 +230,7 @@ export default function DebtsPage() {
                             className="text-[8px] sm:text-[10px] px-1 sm:px-2 py-0 shrink-0"
                             tone={settled ? "income" : late ? "expense" : isPayable ? "expense" : "income"}
                           >
-                            {settled ? "Lunas" : late ? "Telat" : days === 0 ? "Hari ini" : `${days} hari lagi`}
+                            {getDebtDueLabel(days, settled, late)}
                           </Badge>
                         </div>
                         <Progress

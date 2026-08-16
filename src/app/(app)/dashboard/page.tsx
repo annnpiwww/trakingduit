@@ -18,12 +18,15 @@ import {
   AlertCircle,
   Sparkles,
   HandCoins,
+  ShieldCheck,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { allWalletBalances } from "@/lib/repo";
 import { totals, type Totals } from "@/lib/analytics";
 import type { Bill, Transaction } from "@/lib/types";
 import { cn, formatIDR, monthRange, toDateKey, toMonthKey } from "@/lib/utils";
+import { calculateSafeToSpend, monthlyGoalReserve } from "@/lib/safe-to-spend";
+import { isBillPaidForCycle } from "@/lib/bill-metrics";
 import {
   BalanceCard,
   Button,
@@ -53,11 +56,11 @@ const MOOD_TEXT: Record<Mood["tone"], string> = {
 /** Mood duit dihitung dari data asli: sisa bulan ini dibagi pemasukan. */
 function computeMood(t: Totals): Mood {
   if (t.count === 0) return { emoji: "👀", label: "Belum ada catatan bulan ini", tone: "muted" };
-  if (t.net < 0) return { emoji: "🔥", label: "Waduh, bulan ini minus", tone: "danger" };
+  if (t.net < 0) return { emoji: "!", label: "Pengeluaran lebih besar dari pemasukan", tone: "danger" };
   const sr = t.income > 0 ? t.net / t.income : 1;
-  if (sr >= 0.3) return { emoji: "🤑", label: "Duit aman, gemes", tone: "good" };
-  if (sr >= 0.1) return { emoji: "😌", label: "Aman, tahan dikit dong", tone: "warn" };
-  return { emoji: "🤏", label: "Nyaris abis, sabar", tone: "warn" };
+  if (sr >= 0.3) return { emoji: "✓", label: "Sisa pemasukan masih kuat", tone: "good" };
+  if (sr >= 0.1) return { emoji: "~", label: "Sisa pemasukan mulai menipis", tone: "warn" };
+  return { emoji: "!", label: "Sisa pemasukan terbatas", tone: "warn" };
 }
 
 function MoodPill({ mood }: { mood: Mood }) {
@@ -93,6 +96,7 @@ const QUICK: {
 export default function DashboardPage() {
   const { profile } = useSession();
   const [month, setMonth] = React.useState(toMonthKey());
+  const currentMonth = toMonthKey();
   const [hideBalance, setHideBalance] = React.useState(false);
   const [editing, setEditing] = React.useState<Transaction | null>(null);
   const [traduOpen, setTraduOpen] = React.useState(false);
@@ -131,6 +135,15 @@ export default function DashboardPage() {
       .toArray();
   }, [month]);
 
+  const goals = useLiveQuery(
+    () => db().goals.filter((goal) => !goal.deleted && !goal.archived).toArray(),
+    [],
+  );
+  const salaryRows = useLiveQuery(
+    () => db().salaries.where("month").equals(currentMonth).filter((salary) => !salary.deleted).toArray(),
+    [currentMonth],
+  );
+
   // Get bills due within the selected month
   const bills = useLiveQuery(() => {
     const { from, to } = monthRange(month);
@@ -139,7 +152,7 @@ export default function DashboardPage() {
       .sortBy("due_date");
   }, [month]);
 
-  const isLoading = wallets === undefined || monthTx === undefined || balances === undefined;
+  const isLoading = wallets === undefined || monthTx === undefined || balances === undefined || goals === undefined || salaryRows === undefined;
 
   const t = totals(monthTx ?? []);
   const totalBalance = Object.values(balances ?? {}).reduce((a, b) => a + b, 0);
@@ -157,6 +170,38 @@ export default function DashboardPage() {
   // Only show 3 nearest bills
   const upcomingBills = bills?.slice(0, 3) ?? [];
   const billsTotal = upcomingBills.reduce((sum, bill) => sum + bill.amount, 0);
+  const today = toDateKey();
+  const isCurrentMonth = month === currentMonth;
+  const monthEnd = monthRange(currentMonth).to;
+  const daysRemaining = isCurrentMonth
+    ? Math.max(1, Math.floor((Date.parse(`${monthEnd}T00:00:00`) - Date.parse(`${today}T00:00:00`)) / 86_400_000) + 1)
+    : 1;
+  const reservedBills = isCurrentMonth
+    ? (bills ?? [])
+        .filter((bill) => !isBillPaidForCycle(bill, today))
+        .reduce((sum, bill) => sum + bill.amount, 0)
+    : 0;
+  const reservedGoals = isCurrentMonth
+    ? (goals ?? []).reduce(
+        (sum, goal) => sum + monthlyGoalReserve(
+          {
+            targetAmount: goal.target_amount,
+            savedAmount: goal.saved_amount,
+            deadline: goal.deadline,
+          },
+          currentMonth,
+        ),
+        0,
+      )
+    : 0;
+  const salaryConfigured = (salaryRows?.[0]?.amount ?? 0) > 0;
+  const safeToSpend = calculateSafeToSpend({
+    balance: totalBalance,
+    reservedBills,
+    reservedGoals,
+    daysRemaining,
+    salaryConfigured,
+  });
 
   const mask = (n: number) => (hideBalance ? "••••••" : formatIDR(n));
   
@@ -234,6 +279,43 @@ export default function DashboardPage() {
         }
       />
       </div>
+
+      {/* Safe-to-spend: the core promise of knowing what is still safe this month. */}
+      <Card className="border-brand/20 bg-brand/5 p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+            <ShieldCheck className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold tracking-tight">Aman dipakai sampai akhir bulan</p>
+              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-brand">{isCurrentMonth ? "Live" : "Snapshot"}</span>
+            </div>
+            {isCurrentMonth ? (
+              <>
+                <p className="num mt-1 text-2xl font-bold tracking-tight text-brand">{mask(safeToSpend.total)}</p>
+                <p className="mt-1 text-xs text-muted">
+                  Batas kira-kira {mask(safeToSpend.perDay)} per hari untuk {safeToSpend.daysRemaining} hari ke depan.
+                </p>
+                <p className="mt-2 text-[11px] text-muted">
+                  {safeToSpend.confidence === "low"
+                    ? "Ini perkiraan sementara karena gaji bulan ini belum diatur."
+                    : "Perkiraan ini memakai saldo dan komitmen yang sudah kamu catat."}
+                </p>
+                {safeToSpend.reservedBills > 0 || safeToSpend.reservedGoals > 0 ? (
+                  <p className="mt-1 text-[11px] text-muted">
+                    Dicadangkan: {safeToSpend.reservedBills > 0 ? `tagihan ${mask(safeToSpend.reservedBills)}` : null}
+                    {safeToSpend.reservedBills > 0 && safeToSpend.reservedGoals > 0 ? ", " : null}
+                    {safeToSpend.reservedGoals > 0 ? `target ${mask(safeToSpend.reservedGoals)}` : null}.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-muted">Pilih bulan berjalan untuk lihat batas aman yang paling relevan.</p>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {/* Tradu AI Chat Entry */}
       <button
@@ -350,38 +432,7 @@ function BillItem({ bill, mask }: { bill: Bill; mask: (n: number) => string }) {
 
   // Paid logic: for recurring bills, user may pay before due_date.
   // Consider paid if last_paid_at falls within the current billing cycle.
-  const isPaid = (() => {
-    if (!bill.last_paid_at) return false;
-    const paidDate = bill.last_paid_at.slice(0, 10); // "YYYY-MM-DD"
-    // Already covers: paid on or after due_date
-    if (paidDate >= bill.due_date) return true;
-    
-    // Calculate the start of the current cycle for the next due date
-    const cycleStart = (() => {
-      const d = new Date(bill.due_date);
-      switch (bill.repeat) {
-        case "weekly":
-          d.setDate(d.getDate() - 7);
-          break;
-        case "monthly":
-          d.setMonth(d.getMonth() - 1);
-          break;
-        case "yearly":
-          d.setFullYear(d.getFullYear() - 1);
-          break;
-        default:
-          return null;
-      }
-      const pad = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    })();
-
-    if (!cycleStart) return false;
-
-    // 1. If we haven't reached the new cycle start date yet (early payment / still in paid period)
-    // 2. Or if the last payment was done today or in the future (just paid today)
-    return today < cycleStart || paidDate >= today;
-  })();
+  const isPaid = isBillPaidForCycle(bill, today);
 
   const status = isPaid
     ? { label: "Lunas", color: "text-income" }

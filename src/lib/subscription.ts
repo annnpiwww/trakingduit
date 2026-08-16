@@ -236,7 +236,7 @@ export async function activateTier(tier: TierId, days: number): Promise<void> {
   }
 }
 
-export async function syncQuotaFromUser(user: { id: string; user_metadata?: Record<string, any> }): Promise<void> {
+export async function syncQuotaFromUser(user: { id: string; user_metadata?: Record<string, unknown> }): Promise<void> {
   if (typeof window !== "undefined") {
     localStorage.setItem("td_last_uid", user.id);
   }

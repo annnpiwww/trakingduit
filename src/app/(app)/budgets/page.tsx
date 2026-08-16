@@ -278,6 +278,7 @@ function BudgetSheet({
   const [categoryId, setCategoryId] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [period, setPeriod] = React.useState<Budget["period"]>("monthly");
+  const [saving, setSaving] = React.useState(false);
 
   const available = categories.filter(
     (c) => c.id === budget?.category_id || !usedCategoryIds.includes(c.id),
@@ -292,22 +293,28 @@ function BudgetSheet({
   }, [open, budget]);
 
   async function save() {
+    if (saving) return;
     const value = parseAmount(amount);
     if (!categoryId || value <= 0) return;
-    if (budget) {
-      await updateBudget(budget.id, { amount: value, period, category_id: categoryId });
-      toast("Budget diperbarui", "success");
-    } else {
-      await createBudget({
-        category_id: categoryId,
-        amount: value,
-        period,
-        start_date: `${month}-01`,
-        rollover: 0,
-      });
-      toast("Budget dibuat", "success");
+    setSaving(true);
+    try {
+      if (budget) {
+        await updateBudget(budget.id, { amount: value, period, category_id: categoryId });
+        toast("Budget diperbarui", "success");
+      } else {
+        await createBudget({
+          category_id: categoryId,
+          amount: value,
+          period,
+          start_date: `${month}-01`,
+          rollover: 0,
+        });
+        toast("Budget dibuat", "success");
+      }
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -317,7 +324,7 @@ function BudgetSheet({
       title={budget ? "Ubah Budget" : "Budget Baru"}
       description={`Periode ${month}`}
       footer={
-        <Button className="w-full" size="lg" onClick={save} disabled={!categoryId || !amount}>
+        <Button className="w-full" size="lg" onClick={save} loading={saving} disabled={saving || !categoryId || !amount}>
           Simpan
         </Button>
       }

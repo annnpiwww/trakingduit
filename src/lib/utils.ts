@@ -156,15 +156,28 @@ export function sum(items: number[]): number {
 export async function parseChatCompletionsResponse(res: Response): Promise<string> {
   const text = await res.text().catch(() => "");
 
-  const extract = (obj: any): string => {
-    const choice = obj?.choices?.[0];
-    const c = choice?.message?.content ?? choice?.delta?.content;
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null;
+
+  const extract = (obj: unknown): string => {
+    if (!isRecord(obj)) return "";
+    const choices = Array.isArray(obj.choices) ? obj.choices : [];
+    const choice = isRecord(choices[0]) ? choices[0] : {};
+    const message = isRecord(choice.message) ? choice.message : {};
+    const delta = isRecord(choice.delta) ? choice.delta : {};
+    const contentValue = message.content ?? delta.content;
     const content =
-      typeof c === "string"
-        ? c
-        : Array.isArray(c)
-          ? c.map((p: any) => (typeof p === "string" ? p : p?.text ?? "")).join("")
-          : choice?.text ?? obj?.content ?? "";
+      typeof contentValue === "string"
+        ? contentValue
+        : Array.isArray(contentValue)
+          ? (contentValue as unknown[])
+              .map((part: unknown) => {
+                if (typeof part === "string") return part;
+                if (!isRecord(part)) return "";
+                return typeof part.text === "string" ? part.text : "";
+              })
+              .join("")
+          : choice.text ?? obj.content ?? "";
     return typeof content === "string" ? content : "";
   };
 

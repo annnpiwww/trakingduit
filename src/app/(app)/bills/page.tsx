@@ -8,6 +8,7 @@ import { createBill, deleteBill, getSalaryForMonth, payBill, runBillReminderScan
 import { SalarySheet } from "@/components/bills/salary-sheet";
 import type { Bill } from "@/lib/types";
 import { cn, daysBetween, formatDate, formatIDR, parseAmount, toDateKey } from "@/lib/utils";
+import { getSalarySummary } from "@/lib/bill-metrics";
 import {
   Badge,
   Button,
@@ -37,6 +38,7 @@ export default function BillsPage() {
   const [salaryOpen, setSalaryOpen] = React.useState(false);
   const [hideBalance, setHideBalance] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState<Bill | null>(null);
+  const [payingId, setPayingId] = React.useState<string | null>(null);
   const [filterType, setFilterType] = React.useState<"all" | "regular" | "installment">("all");
 
   React.useEffect(() => {
@@ -102,8 +104,9 @@ export default function BillsPage() {
       </div>
     );
   }
-  const remainingSalary = (salary?.amount ?? 0) - totalActiveBills;
-  const salaryPercent = salary?.amount ? (totalActiveBills / salary.amount) * 100 : 0;
+  const salarySummary = getSalarySummary(salary?.amount, totalActiveBills);
+  const remainingSalary = salarySummary.remaining;
+  const salaryPercent = salarySummary.percent;
 
   const totalInstallmentDebt = active
     .filter((b) => b.is_installment)
@@ -130,7 +133,7 @@ export default function BillsPage() {
         <StatTile label="Bulanan" value={mask(monthlyTotal)} tone="expense" />
         <StatTile
           label="Gaji"
-          value={mask(salary?.amount ?? 0)}
+          value={salarySummary.configured ? mask(salary?.amount ?? 0) : "Belum diatur"}
           hint={
             <button
               onClick={toggleHideBalance}
@@ -141,12 +144,20 @@ export default function BillsPage() {
             </button>
           }
         />
-        <StatTile label="Sisa Gaji" value={mask(remainingSalary)} tone={remainingSalary >= 0 ? "income" : "expense"} />
-        <StatTile label="Persentase" value={`${Math.round(salaryPercent)}%`} tone={salaryPercent > 100 ? "expense" : salaryPercent < 50 ? "income" : "brand"} />
+        <StatTile
+          label="Sisa Gaji"
+          value={remainingSalary == null ? "—" : mask(remainingSalary)}
+          tone={remainingSalary == null ? "neutral" : remainingSalary >= 0 ? "income" : "expense"}
+        />
+        <StatTile
+          label="Persentase"
+          value={salaryPercent == null ? "—" : `${Math.round(salaryPercent)}%`}
+          tone={salaryPercent == null ? "neutral" : salaryPercent > 100 ? "expense" : salaryPercent < 50 ? "income" : "brand"}
+        />
         <StatTile label="Jatuh tempo ≤7 hari" value={`${dueSoon.length}`} tone="brand" />
       </div>
 
-      {!salary && (
+      {!salarySummary.configured && (
         <Card className="flex flex-col gap-3 rounded-2xl border-brand/20 bg-brand/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 className="text-sm font-semibold">Belum ada gaji yang keinput</h4>
@@ -156,17 +167,17 @@ export default function BillsPage() {
         </Card>
       )}
 
-      {salary && salaryPercent > 100 && (
+      {salarySummary.configured && salaryPercent != null && salaryPercent > 100 && (
         <Card className="border-expense/20 bg-expense/10 p-3 text-xs font-medium text-expense">
           Duh, total tagihan sudah lebih gede dari gaji kamu bulan ini! ({Math.round(salaryPercent)}%)
         </Card>
       )}
-      {salary && salaryPercent >= 50 && salaryPercent <= 100 && (
+      {salarySummary.configured && salaryPercent != null && salaryPercent >= 50 && salaryPercent <= 100 && (
         <Card className="border-warn/20 bg-warn/10 p-3 text-xs font-medium text-warn">
           Hati-hati, {Math.round(salaryPercent)}% gaji abis buat tagihan nih!
         </Card>
       )}
-      {salary && salaryPercent < 50 && (
+      {salarySummary.configured && salaryPercent != null && salaryPercent < 50 && (
         <Card className="border-income/20 bg-income/10 p-3 text-xs font-medium text-income">
           Mantap, tagihan cuma makan {Math.round(salaryPercent)}% gaji kamu bulan ini!
         </Card>
@@ -362,9 +373,19 @@ export default function BillsPage() {
                       variant="secondary"
                       size="sm"
                       className="w-full text-[10px] sm:text-xs h-7 sm:h-8 px-1.5"
+                      loading={payingId === b.id}
+                      disabled={payingId !== null}
                       onClick={async () => {
-                        await payBill(b.id);
-                        toast(`${b.name} ditandai lunas`, "success");
+                        if (payingId) return;
+                        setPayingId(b.id);
+                        try {
+                          await payBill(b.id);
+                          toast(`${b.name} ditandai lunas`, "success");
+                        } catch {
+                          toast("Pembayaran tagihan gagal dicatat", "error");
+                        } finally {
+                          setPayingId(null);
+                        }
                       }}
                     >
                       <Check className="size-3 shrink-0 mr-0.5" /> <span className="truncate">Lunas{b.auto_create_tx ? " + catat" : ""}</span>
@@ -482,6 +503,7 @@ function BillSheet({
   const [isInstallment, setIsInstallment] = React.useState(false);
   const [instalmentTotal, setInstalmentTotal] = React.useState("12");
   const [instalmentPaid, setInstalmentPaid] = React.useState("0");
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -499,10 +521,11 @@ function BillSheet({
   }, [open, bill, wallets]);
 
   async function save() {
+    if (saving) return;
     const value = parseAmount(amount);
     if (!name.trim() || value <= 0) return;
     const totalPeriods = Number(instalmentTotal) || 1;
-    const payload: Partial<Bill> = {
+    const payload = {
       name: name.trim(),
       amount: value,
       due_date: dueDate,
@@ -516,14 +539,19 @@ function BillSheet({
       installment_paid: isInstallment ? (Number(instalmentPaid) || 0) : undefined,
       installment_amount_per_period: isInstallment ? value : undefined,
     };
-    if (bill) {
-      await updateBill(bill.id, payload);
-      toast("Tagihan diperbarui", "success");
-    } else {
-      await createBill({ ...payload, archived: 0 } as any);
-      toast("Tagihan ditambahkan", "success");
+    setSaving(true);
+    try {
+      if (bill) {
+        await updateBill(bill.id, payload);
+        toast("Tagihan diperbarui", "success");
+      } else {
+        await createBill({ ...payload, archived: 0 });
+        toast("Tagihan ditambahkan", "success");
+      }
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -532,7 +560,7 @@ function BillSheet({
       onClose={onClose}
       title={bill ? "Edit Tagihan" : "Tagihan Baru"}
       footer={
-        <Button className="w-full" size="lg" onClick={save} disabled={!name.trim() || !amount}>
+        <Button className="w-full" size="lg" onClick={save} loading={saving} disabled={saving || !name.trim() || !amount}>
           Simpan
         </Button>
       }

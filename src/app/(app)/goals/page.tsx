@@ -247,6 +247,7 @@ function GoalSheet({
   const [deadline, setDeadline] = React.useState("");
   const [color, setColor] = React.useState(WALLET_COLORS[0]);
   const [icon, setIcon] = React.useState("target");
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -259,6 +260,7 @@ function GoalSheet({
   }, [open, goal]);
 
   async function save() {
+    if (saving) return;
     const targetValue = parseAmount(target);
     if (!name.trim() || targetValue <= 0) return;
     const payload = {
@@ -269,14 +271,19 @@ function GoalSheet({
       color,
       icon,
     };
-    if (goal) {
-      await updateGoal(goal.id, payload);
-      toast("Target diperbarui", "success");
-    } else {
-      await createGoal({ ...payload, archived: 0 });
-      toast("Target dibuat", "success");
+    setSaving(true);
+    try {
+      if (goal) {
+        await updateGoal(goal.id, payload);
+        toast("Target diperbarui", "success");
+      } else {
+        await createGoal({ ...payload, archived: 0 });
+        toast("Target dibuat", "success");
+      }
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -285,7 +292,7 @@ function GoalSheet({
       onClose={onClose}
       title={goal ? "Edit Target" : "Target Baru"}
       footer={
-        <Button className="w-full" size="lg" onClick={save} disabled={!name.trim() || !target}>
+        <Button className="w-full" size="lg" onClick={save} loading={saving} disabled={saving || !name.trim() || !target}>
           Simpan
         </Button>
       }
@@ -370,6 +377,7 @@ function ContributeSheet({ goal, onClose }: { goal: SavingGoal | null; onClose: 
   const toast = useToast();
   const [amount, setAmount] = React.useState("");
   const [mode, setMode] = React.useState<1 | -1>(1);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (goal) {
@@ -379,12 +387,17 @@ function ContributeSheet({ goal, onClose }: { goal: SavingGoal | null; onClose: 
   }, [goal]);
 
   async function submit() {
-    if (!goal) return;
+    if (!goal || saving) return;
     const value = parseAmount(amount);
     if (value <= 0) return;
-    await contributeToGoal(goal.id, value * mode);
-    toast(mode === 1 ? `Setor ${formatIDR(value)}` : `Tarik ${formatIDR(value)}`, "success");
-    onClose();
+    setSaving(true);
+    try {
+      await contributeToGoal(goal.id, value * mode);
+      toast(mode === 1 ? `Setor ${formatIDR(value)}` : `Tarik ${formatIDR(value)}`, "success");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -394,7 +407,7 @@ function ContributeSheet({ goal, onClose }: { goal: SavingGoal | null; onClose: 
       title={goal?.name ?? ""}
       description={goal ? `Terkumpul ${formatIDR(goal.saved_amount)} dari ${formatIDR(goal.target_amount)}` : ""}
       footer={
-        <Button className="w-full" size="lg" onClick={submit} disabled={!amount}>
+        <Button className="w-full" size="lg" onClick={submit} loading={saving} disabled={saving || !amount}>
           {mode === 1 ? "Setor" : "Tarik"}
         </Button>
       }

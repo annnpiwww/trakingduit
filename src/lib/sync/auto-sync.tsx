@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSession } from "@/lib/session";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase";
 import { lastSupabaseSync, syncSupabase } from "./supabase-sync";
+import { registerMutationCallback } from "@/lib/repo";
 
 /** Jeda antar sinkron saat semuanya sehat. */
 const INTERVAL_MS = 60_000;
@@ -136,7 +137,6 @@ export function AutoSyncProvider({ children }: { children: React.ReactNode }) {
     const kick = () => scheduleNext(0);
     kickRef.current = kick;
 
-    const { registerMutationCallback } = require("@/lib/repo");
     registerMutationCallback(() => {
       kick();
     });

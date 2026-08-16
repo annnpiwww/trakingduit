@@ -420,12 +420,15 @@ function ToastItem({
   const [isHovered, setIsHovered] = React.useState(false);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
   const remainingRef = React.useRef<number>(3200);
-  const startTimeRef = React.useRef<number>(Date.now());
+  const startTimeRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (isHovered) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      remainingRef.current -= Date.now() - startTimeRef.current;
+      if (startTimeRef.current !== null) {
+        remainingRef.current -= Date.now() - startTimeRef.current;
+        startTimeRef.current = null;
+      }
     } else {
       startTimeRef.current = Date.now();
       timerRef.current = setTimeout(() => {

@@ -97,9 +97,9 @@ export default function AnalyticsPage() {
       if (expense > 0) {
         return {
           score: Math.max(0, Math.min(100, Math.round(Number(balance > expense) * 30))),
-          status: "Buruk",
+          status: "Perlu perhatian",
           tone: "expense" as const,
-          description: `Waduh, saldo cepat habis total! Kamu belum ada pemasukan tapi pengeluaran sudah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus!" : `sisa saldo total: ${formatIDR(balance)}`}). Yuk rem dulu jajannya!`,
+          description: `Belum ada pemasukan tercatat, sementara pengeluaran sudah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus" : `sisa saldo total: ${formatIDR(balance)}`}). Tambahkan pemasukan atau cek pengeluaran terdekat.`,
         };
       }
       return {
@@ -129,26 +129,29 @@ export default function AnalyticsPage() {
     
     finalScore = Math.max(0, Math.min(100, finalScore));
 
-    let status = "Buruk";
+    let status = "Perlu perhatian";
     let tone: "neutral" | "income" | "expense" | "brand" = "expense";
     let description = "";
 
     if (finalScore >= 80) {
       status = "Sangat Baik";
       tone = "income";
-      description = `Gokil! Pengeluaran kamu cuma ${expensePercent}% dari pemasukan. Sisa uang yang kamu simpan sudah ${Math.round(savingRatio * 100)}%. Total saldo kamu sekarang aman di ${formatIDR(balance)}. Mantap, pertahankan terus!`;
+      description = `Pengeluaran tercatat ${expensePercent}% dari pemasukan, dengan sisa ${Math.round(savingRatio * 100)}%. Total saldo saat ini ${formatIDR(balance)}.`;
+
     } else if (finalScore >= 60) {
       status = "Baik";
       tone = "income";
-      description = `Keuangan kamu masih sehat. Pengeluaran sekitar ${expensePercent}% dari pemasukan, jadi masih ada sisa buat ditabung. Saldo kamu sekarang ${formatIDR(balance)}. Tetap kontrol belanja impulsif, ya!`;
+      description = `Pengeluaran tercatat sekitar ${expensePercent}% dari pemasukan, jadi masih ada ruang untuk ditabung. Saldo saat ini ${formatIDR(balance)}.`;
+
     } else if (finalScore >= 40) {
       status = "Cukup";
       tone = "brand";
-      description = `Saldo kamu mulai tipis nih. Jajan dan checkout sudah mengambil ${expensePercent}% dari pemasukan. Sisa saldo ${formatIDR(balance)}. Coba kurangi belanja yang belum terlalu penting, ya!`;
+      description = `Sisa saldo ${formatIDR(balance)} setelah pengeluaran mengambil ${expensePercent}% dari pemasukan. Cek pengeluaran rutin sebelum menambah belanja baru.`;
+
     } else {
-      status = "Buruk";
+      status = "Perlu perhatian";
       tone = "expense";
-      description = `Waduh, pengeluaran kamu sudah terlalu besar sampai ${expensePercent}% dari pemasukan. Sisa uang tinggal ${formatIDR(balance)}. Saatnya rem dulu supaya saldo nggak makin menipis!`;
+      description = `Pengeluaran sudah ${expensePercent}% dari pemasukan dan sisa saldo ${formatIDR(balance)}. Prioritaskan kebutuhan terdekat sebelum pengeluaran tambahan.`;
     }
 
     return { score: finalScore, status, tone, description };

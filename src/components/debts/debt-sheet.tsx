@@ -60,6 +60,7 @@ export function DebtSheet({
   const [note, setNote] = React.useState("");
   const [walletId, setWalletId] = React.useState("");
   const [autoTx, setAutoTx] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -73,6 +74,7 @@ export function DebtSheet({
   }, [open, debt, wallets]);
 
   async function save() {
+    if (saving) return;
     const value = parseAmount(amount);
     if (!person.trim() || value <= 0) return;
     const payload = {
@@ -85,14 +87,19 @@ export function DebtSheet({
       wallet_id: walletId || undefined,
       auto_tx: (autoTx ? 1 : 0) as 0 | 1,
     };
-    if (debt) {
-      await updateDebt(debt.id, payload);
-      toast("Utang piutang diupdate", "success");
-    } else {
-      await createDebt(payload);
-      toast("Catatan utang piutang dibuat", "success");
+    setSaving(true);
+    try {
+      if (debt) {
+        await updateDebt(debt.id, payload);
+        toast("Utang piutang diupdate", "success");
+      } else {
+        await createDebt(payload);
+        toast("Catatan utang piutang dibuat", "success");
+      }
+      onClose();
+    } finally {
+      setSaving(false);
     }
-    onClose();
   }
 
   return (
@@ -102,7 +109,7 @@ export function DebtSheet({
       title={debt ? "Edit Catatan" : "Catat Utang Piutang"}
       description="Utang = uang yang kamu pinjam, piutang = uang yang dipinjam orang dari kamu"
       footer={
-        <Button className="w-full" size="lg" onClick={save} disabled={!person.trim() || parseAmount(amount) <= 0}>
+        <Button className="w-full" size="lg" onClick={save} loading={saving} disabled={saving || !person.trim() || parseAmount(amount) <= 0}>
           Simpan
         </Button>
       }

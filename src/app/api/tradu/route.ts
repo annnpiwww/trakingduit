@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isSupabaseConfigured, supabaseFromRequest } from "@/lib/supabase";
 import { parseChatCompletionsResponse } from "@/lib/utils";
+import { checkPersistentRateLimit } from "@/lib/rate-limit";
+import { traduRequestSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -44,12 +46,41 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { messages, financialContext } = await req.json();
+    const body = await req.json();
+    const validated = traduRequestSchema.safeParse(body);
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "messages array is required" }, { status: 400 });
+    if (!validated.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid request",
+          details: validated.error.issues.map((issue) => issue.message),
+        },
+        { status: 400 },
+      );
     }
 
+    const clientIdentifier = req.headers.get("x-real-ip")?.trim()
+      || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || "unknown";
+    const rateLimit = await checkPersistentRateLimit({
+      key: `tradu:${clientIdentifier}`,
+      maxRequests: 20,
+      windowMs: 60_000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak pesan. Coba lagi sebentar ya." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+          },
+        },
+      );
+    }
+
+    const { messages, financialContext } = validated.data;
     const ctx = financialContext ?? {};
     const fmt = (n?: number) => (n == null ? "-" : `Rp${Math.round(n).toLocaleString("id-ID")}`);
     const pct = (n?: number) => (n == null ? "-" : `${Math.round(n * 100)}%`);
@@ -62,14 +93,14 @@ KONDISI KEUANGAN PENGGUNA (data real dari app, jadikan acuan analisis):
 - Rasio menabung bulan ini: ${pct(ctx.savingsRate)} · Rata-rata keluar/hari: ${fmt(ctx.avgDailySpend)}
 - Proyeksi pengeluaran akhir bulan (laju saat ini): ${fmt(ctx.projectedMonthEnd)}
 - Pengeluaran bulan lalu: ${fmt(ctx.lastMonthExpense)} (${ctx.lastMonthDelta == null ? "belum ada data" : ctx.lastMonthDelta >= 0 ? `naik ${fmt(ctx.lastMonthDelta)} dari bulan lalu` : `turun ${fmt(-ctx.lastMonthDelta)} dari bulan lalu`})
-- Budget aktif: ${ctx.budgetUsage?.length ? ctx.budgetUsage.map((b: any) => `${b.name} ${pct(b.used)}`).join(", ") : "tidak ada"}
-- Tagihan jatuh tempo ≤7 hari: ${ctx.upcomingBills?.length ? ctx.upcomingBills.map((b: any) => `${b.name} (${b.daysLeft === 0 ? "hari ini" : `${b.daysLeft} hari lagi`})`).join(", ") : "tidak ada"}
+- Budget aktif: ${ctx.budgetUsage?.length ? ctx.budgetUsage.map((b) => `${b.name} ${pct(b.used)}`).join(", ") : "tidak ada"}
+- Tagihan jatuh tempo ≤7 hari: ${ctx.upcomingBills?.length ? ctx.upcomingBills.map((b) => `${b.name} (${b.daysLeft === 0 ? "hari ini" : `${b.daysLeft} hari lagi`})`).join(", ") : "tidak ada"}
 
 Top Kategori Pengeluaran Bulan Ini:
-${ctx.topCategories?.length ? ctx.topCategories.map((c: any) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n") : "- (Belum ada data pengeluaran)"}
+${ctx.topCategories?.length ? ctx.topCategories.map((c) => `- ${c.name}: ${fmt(c.total)} (${pct(c.share)})`).join("\n") : "- (Belum ada data pengeluaran)"}
 
 Transaksi terbaru:
-${ctx.recentTransactions?.length ? ctx.recentTransactions.map((tx: any) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) ${fmt(tx.amount)}`).join("\n") : "- (Belum ada transaksi)"}
+${ctx.recentTransactions?.length ? ctx.recentTransactions.map((tx) => `- ${tx.date}: ${tx.description} (${tx.type === "expense" ? "Keluar" : "Masuk"}) ${fmt(tx.amount)}`).join("\n") : "- (Belum ada transaksi)"}
 `;
 
     const systemPrompt = `Kamu adalah Tradu, asisten keuangan pribadi yang cerdas, hangat, dan analitis untuk Gen Z Indonesia.
@@ -99,7 +130,7 @@ Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatka
 
     const apiMessages = [
       { role: "system", content: systemPrompt },
-      ...messages.map((m: any) => ({
+      ...messages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
@@ -168,8 +199,9 @@ Tanggapi pertanyaan pengguna sesuai persona dan cara berpikir di atas, manfaatka
     }
 
     return NextResponse.json({ reply });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
