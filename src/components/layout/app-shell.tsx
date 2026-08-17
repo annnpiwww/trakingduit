@@ -340,7 +340,7 @@ function TopBar({ unread }: { unread: number }) {
 
 function BottomNav({ pathname, onAdd }: { pathname: string; onAdd: () => void }) {
   const left = PRIMARY_NAV.slice(0, 2);
-  const right = [PRIMARY_NAV[1], { href: "/menu", label: "Menu", icon: LayoutGrid }];
+  const right = [PRIMARY_NAV[3], { href: "/menu", label: "Menu", icon: LayoutGrid }];
 
   return (
     <nav className="safe-b fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md lg:hidden">

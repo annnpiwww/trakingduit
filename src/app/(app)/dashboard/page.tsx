@@ -69,7 +69,7 @@ function MoodPill({ mood }: { mood: Mood }) {
       )}
     >
       <span className="shrink-0">{mood.emoji}</span>
-      <span className="whitespace-nowrap">{mood.label}</span>
+      <span className="whitespace-normal text-[10px] sm:text-[11px] leading-tight max-w-[200px] sm:max-w-none">{mood.label}</span>
     </span>
   );
 }
