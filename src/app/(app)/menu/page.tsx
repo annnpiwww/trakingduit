@@ -123,7 +123,7 @@ export default function MenuPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">Install Aplikasi</span>
-                <span className="block text-xs text-muted">Pasang TrackingDuit di home screen</span>
+                <span className="block text-xs text-muted">Pasang TrakingDuit di home screen</span>
               </span>
               <ChevronRight className="size-4 text-muted" />
             </button>
@@ -136,7 +136,7 @@ export default function MenuPage() {
       </Button>
 
       <p className="text-center text-xs text-muted">
-        TrackingDuit v1.28.0
+        TrakingDuit v1.29.0
       </p>
 
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
