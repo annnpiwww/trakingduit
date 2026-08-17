@@ -194,9 +194,15 @@ export default function DashboardPage() {
       {/* Greeting + month switcher - more compact */}
       <div className="flex w-full items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base leading-tight font-bold tracking-tight sm:text-xl">
-            Hai, {displayName} 👋
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-base leading-tight font-bold tracking-tight sm:text-xl">
+              Hai, {displayName} 👋
+            </p>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400" title="Dirgahayu Indonesia 🇮🇩">
+              <span>🇮🇩</span>
+              <span className="hidden xs:inline">17-an</span>
+            </span>
+          </div>
           <p className="mt-1 truncate text-[11px] text-muted sm:text-xs">Gimana duitmu hari ini?</p>
         </div>
         <div className="shrink-0">

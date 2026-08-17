@@ -150,7 +150,7 @@ export default function BillsPage() {
         <Card className="flex flex-col gap-3 rounded-2xl border-brand/20 bg-brand/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 className="text-sm font-semibold">Belum ada gaji yang keinput</h4>
-            <p className="text-xs text-muted">Isi gaji bulanan dulu biar TrackingDuit bisa itung sisa duit kamu setelah bayar tagihan.</p>
+            <p className="text-xs text-muted">Isi gaji bulanan dulu biar TrakingDuit bisa itung sisa duit kamu setelah bayar tagihan.</p>
           </div>
           <Button size="sm" onClick={() => setSalaryOpen(true)}>Set Gaji</Button>
         </Card>

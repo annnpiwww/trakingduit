@@ -99,14 +99,14 @@ export default function AnalyticsPage() {
           score: Math.max(0, Math.min(100, Math.round(Number(balance > expense) * 30))),
           status: "Buruk",
           tone: "expense" as const,
-          description: `Waduh, boncos total! Lo belum ada pemasukan tapi pengeluaran udah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus!" : `sisa saldo total: ${formatIDR(balance)}`}). Yuk rem dulu jajannya!`,
+          description: `Waduh, boncos total! Kamu belum ada pemasukan tapi pengeluaran udah ${formatIDR(expense)} (${balance < 0 ? "saldo total minus!" : `sisa saldo total: ${formatIDR(balance)}`}). Yuk rem dulu jajannya!`,
         };
       }
       return {
         score: 50,
         status: "Cukup",
         tone: "brand" as const,
-        description: "Keuangan lo pasif nih, kaga ada pemasukan maupun pengeluaran. Coba catat transaksi biar lebih akurat.",
+        description: "Keuangan kamu pasif nih, kaga ada pemasukan maupun pengeluaran. Coba catat transaksi biar lebih akurat.",
       };
     }
 
@@ -136,15 +136,15 @@ export default function AnalyticsPage() {
     if (finalScore >= 80) {
       status = "Sangat Baik";
       tone = "income";
-      description = `Gokil! Pengeluaran lo cuma ${expensePercent}% dari pemasukan. Sisa duit lo yang disimpen mencapai ${Math.round(savingRatio * 100)}%. Total saldo saat ini aman ${formatIDR(balance)}. Mantap bener, pertahanin terus!`;
+      description = `Gokil! Pengeluaran kamu cuma ${expensePercent}% dari pemasukan. Sisa duit kamu yang disimpen mencapai ${Math.round(savingRatio * 100)}%. Total saldo saat ini aman ${formatIDR(balance)}. Mantap bener, pertahanin terus!`;
     } else if (finalScore >= 60) {
       status = "Baik";
       tone = "income";
-      description = `Keuangan lo dalam kondisi sehat. Pengeluaran makan ${expensePercent}% pemasukan. Masih ada sisa tabungan dan saldo lo safe di angka ${formatIDR(balance)}. Kontrol terus impulsive buying lo!`;
+      description = `Keuangan kamu dalam kondisi sehat. Pengeluaran makan ${expensePercent}% pemasukan. Masih ada sisa tabungan dan saldo kamu safe di angka ${formatIDR(balance)}. Kontrol terus impulsive buying kamu!`;
     } else if (finalScore >= 40) {
       status = "Cukup";
       tone = "brand";
-      description = `Dompet lo mulai tipis nih. Jajan boba & checkout keranjang udah nelan ${expensePercent}% pemasukan. Saldo tersisa ${formatIDR(balance)}. Kurang-kurangin shopping yang kaga penting ya!`;
+      description = `Dompet kamu mulai tipis nih. Jajan boba & checkout keranjang udah nelan ${expensePercent}% pemasukan. Saldo tersisa ${formatIDR(balance)}. Kurang-kurangin shopping yang kaga penting ya!`;
     } else {
       status = "Buruk";
       tone = "expense";
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
           <Sparkles className="size-4 shrink-0" /> Analisis Kesehatan Finansial
         </h4>
         <p className="text-xs text-muted mt-1 leading-relaxed">
-          Kesehatan keuangan lo dapet skor <span className="font-semibold text-fg">{finHealth.score}/100</span> ({finHealth.status}). {finHealth.description}
+          Kesehatan keuangan kamu dapet skor <span className="font-semibold text-fg">{finHealth.score}/100</span> ({finHealth.status}). {finHealth.description}
         </p>
       </Card>
 

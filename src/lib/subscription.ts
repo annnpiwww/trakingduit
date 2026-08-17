@@ -15,6 +15,8 @@ export interface TierConfig {
   tagline: string;
   /** Rupiah per bulan. */
   price: number;
+  originalPrice?: number;
+  promoBadge?: string;
   /** Chip kecil di kartu (mis. "Paling laris"). */
   highlight?: string;
   popular?: boolean;
@@ -28,13 +30,13 @@ export const TIERS: Record<TierId, TierConfig> = {
   free: {
     id: "free",
     name: "Standar",
-    tagline: "Cukup buat mulai catat duit",
+    tagline: "Pas untuk baru mulai catat keuangan harian",
     price: 0,
     benefits: [
       "Tradu 3 chat per hari",
       "Scan nota 5 kali per hari",
       "Transaksi, budget, target, utang",
-      "Sync cloud di semua device lu",
+      "Sync cloud di semua device kamu",
       "Dashboard + analisis tiap bulan",
     ],
     limits: { tradu: 3, ocr: 5 },
@@ -49,7 +51,7 @@ export const TIERS: Record<TierId, TierConfig> = {
     benefits: [
       "Tradu 30 chat per hari",
       "Scan nota 15 kali per hari",
-      "Badge streak + ekspor data lu",
+      "Badge streak + ekspor data kamu",
       "Download backup & laporan",
       "Semua fitur Standar",
     ],
@@ -58,14 +60,16 @@ export const TIERS: Record<TierId, TierConfig> = {
   pro: {
     id: "pro",
     name: "Pro",
-    tagline: "Gas pol, tanpa batas — buat raja duit",
-    price: 45_000,
+    tagline: "Akses penuh fitur AI & kuota maksimal tanpa batas",
+    price: 20_000,
+    originalPrice: 45_000,
+    promoBadge: "PROMO MERDEKA",
     highlight: "Full akses",
     benefits: [
-      "Tradu tanpa batas (soft cap 200)",
-      "Scan nota tanpa batas (soft cap 100)",
+      "Tradu tanpa batas",
+      "Scan nota tanpa batas",
       "Tema warna premium",
-      "Badge eksklusif di profil lu",
+      "Badge eksklusif di profil kamu",
       "Semua fitur Premium",
     ],
     limits: { tradu: -1, ocr: -1 },

@@ -100,7 +100,7 @@ export function DebtSheet({
       open={open}
       onClose={onClose}
       title={debt ? "Edit Catatan" : "Catat Utang Piutang"}
-      description="Utang = lo yang minjem, Piutang = orang minjem ke lo"
+      description="Utang = kamu yang minjem, Piutang = orang minjem ke kamu"
       footer={
         <Button className="w-full" size="lg" onClick={save} disabled={!person.trim() || parseAmount(amount) <= 0}>
           Simpan
@@ -118,7 +118,7 @@ export function DebtSheet({
           ]}
         />
 
-        <Field label="Nama orang" hint="Siapa yang ngutang / yang lo utangi">
+        <Field label="Nama orang" hint="Siapa yang ngutang / yang kamu utangi">
           <Input
             value={person}
             onChange={(e) => setPerson(e.target.value)}

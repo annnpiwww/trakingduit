@@ -12,7 +12,7 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
       open={open}
       onClose={onClose}
       title="Install Aplikasi"
-      description="Pasang TrackingDuit di home screen"
+      description="Pasang TrakingDuit di home screen"
     >
       <div className="space-y-4 pt-1">
         <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand/10 text-brand">

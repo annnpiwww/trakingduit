@@ -20,7 +20,16 @@ function MutationErrorBridge() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
+    if (process.env.NODE_ENV !== "production") {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      return;
+    }
     if (!("serviceWorker" in navigator)) return;
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);

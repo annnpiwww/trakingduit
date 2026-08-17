@@ -45,6 +45,8 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   // API responses are user data — never serve them stale
   if (url.pathname.startsWith("/api/")) return;
+  // Next.js internal / HMR / static chunks — never intercept to avoid module mismatch
+  if (url.pathname.startsWith("/_next/")) return;
 
   // navigations: network first, fall back to the cached shell when offline
   if (request.mode === "navigate") {

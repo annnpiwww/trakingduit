@@ -27,22 +27,22 @@ const BASE_STEPS: TourStep[] = [
   {
     sel: "[data-tour='balance']",
     icon: WalletCards,
-    title: "Ini saldo lo",
-    body: "Total saldo semua dompet lo dalam satu kartu. Pencet ikon mata buat nyembunyiin nominal, chip mood nunjukin kondisi duit lo bulan ini.",
-    tip: "Saldo auto-update tiap lo catat transaksi.",
+    title: "Ini saldo kamu",
+    body: "Total saldo semua dompet kamu dalam satu kartu. Pencet ikon mata buat nyembunyiin nominal, chip mood nunjukin kondisi duit kamu bulan ini.",
+    tip: "Saldo auto-update tiap kamu catat transaksi.",
   },
   {
     sel: "[data-tour='tile-debts']",
     icon: HandCoins,
     title: "Fitur baru: Utang Piutang",
-    body: "Shortcut ini ngebuka halaman utang piutang. Catat siapa yang minjem ke lo (piutang) atau yang lo utangi (utang), lengkap sama jatuh tempo.",
+    body: "Shortcut ini ngebuka halaman utang piutang. Catat siapa yang minjem ke kamu (piutang) atau yang kamu utangi (utang), lengkap sama jatuh tempo.",
     tip: "Sekali bayar/terima, transaksinya langsung kebuat otomatis.",
   },
   {
     sel: "[data-tour='tradu']",
     icon: Sparkles,
     title: "Tanya Tradu ✨",
-    body: "Asisten AI buat ngobrolin duit lo. Roast pengeluaran, tips nabung, sampe bantu baca laporan keuangan.",
+    body: "Asisten AI buat ngobrolin duit kamu. Roast pengeluaran, tips nabung, sampe bantu baca laporan keuangan.",
     tip: "Klik kartu ini kapan aja buat mulai chat.",
   },
   {
@@ -50,20 +50,20 @@ const BASE_STEPS: TourStep[] = [
     icon: ListPlus,
     title: "Catat transaksi",
     body: "Tombol ini buat catat pemasukan, pengeluaran, atau transfer antar dompet dalam hitungan detik.",
-    tip: "Pake kategori biar laporan bulanan lo rapi.",
+    tip: "Pake kategori biar laporan bulanan kamu rapi.",
   },
   {
     icon: MonitorSmartphone,
     title: "Pasang jadi aplikasi 📲",
-    body: "Install TrackingDuit di home screen biar kebuka lebih cepat, bisa dipakai offline, dan tampil fullscreen kayak app beneran. Nggak wajib — bisa dilewatin.",
+    body: "Install TrakingDuit di home screen biar kebuka lebih cepat, bisa dipakai offline, dan tampil fullscreen kayak app beneran. Nggak wajib — bisa dilewatin.",
     tip: "Bisa install kapan aja dari Menu → Install Aplikasi.",
     install: true,
   },
   {
     icon: Sparkles,
     title: "Siap mulai! 🚀",
-    body: "Lo udah kenal fitur utama. Scan struk, tagihan, budget, target nabung, dan analisis nunggu di menu.",
-    tip: "Data lo aman di perangkat & bisa sync ke cloud.",
+    body: "Kamu udah kenal fitur utama. Scan struk, tagihan, budget, target nabung, dan analisis nunggu di menu.",
+    tip: "Data kamu aman di perangkat & bisa sync ke cloud.",
   },
 ];
 
@@ -246,7 +246,7 @@ export function OnboardingTutorial() {
           className="fixed inset-0 z-[80]"
           role="dialog"
           aria-modal="true"
-          aria-label="Tur singkat TrackingDuit"
+          aria-label="Tur singkat TrakingDuit"
           onClick={next}
         >
           {/* Overlay gelap + hole spotlight */}

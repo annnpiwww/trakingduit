@@ -11,12 +11,12 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "TrackingDuit - Catat keuangan, cepat",
+  title: "TrakingDuit - Catat keuangan, cepat",
   description:
     "Aplikasi personal finance offline-first: catat pemasukan & pengeluaran, OCR nota, multi-wallet, analitik, dan sinkron Google Spreadsheet.",
-  applicationName: "TrackingDuit",
+  applicationName: "TrakingDuit",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "TrackingDuit" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "TrakingDuit" },
 };
 
 export const viewport: Viewport = {

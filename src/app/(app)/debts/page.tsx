@@ -276,7 +276,7 @@ export default function DebtsPage() {
           <EmptyState
             icon={HandCoins}
             title="Belum ada utang piutang"
-            description="Catat siapa yang minjem duit ke lo (piutang) atau yang lo minjemin (utang), biar nggak lupa nagih."
+            description="Catat siapa yang minjem duit ke kamu (piutang) atau yang kamu minjemin (utang), biar nggak lupa nagih."
             action={
               <Button
                 size="sm"

@@ -39,7 +39,7 @@ export function InstallPrompt({ compact = false }: { compact?: boolean }) {
           >
             <CheckCircle2 className="size-5 shrink-0" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold">TrackingDuit udah terpasang</p>
+              <p className="text-sm font-semibold">TrakingDuit udah terpasang</p>
               <p className="text-xs opacity-80">Buka dari home screen, kayak app beneran.</p>
             </div>
           </motion.div>
@@ -54,7 +54,7 @@ export function InstallPrompt({ compact = false }: { compact?: boolean }) {
             <div className="flex items-start gap-2.5 rounded-xl bg-surface-2 px-3.5 py-3">
               <Download className="mt-0.5 size-5 shrink-0 text-brand" />
               <p className="text-xs leading-relaxed text-muted">
-                Pasang TrackingDuit di home screen biar buka-nya lebih cepat & bisa dipakai
+                Pasang TrakingDuit di home screen biar buka-nya lebih cepat & bisa dipakai
                 tanpa internet.
               </p>
             </div>
@@ -105,7 +105,7 @@ export function InstallPrompt({ compact = false }: { compact?: boolean }) {
           >
             <MonitorSmartphone className="mt-0.5 size-5 shrink-0 text-brand" />
             <p className="text-xs leading-relaxed text-muted">
-              Browser lo nggak dukung install otomatis. Buka aplikasi ini lewat{" "}
+              Browser kamu nggak dukung install otomatis. Buka aplikasi ini lewat{" "}
               <b>Chrome di Android</b> atau <b>Safari di iPhone</b> biar bisa dipasang.
             </p>
           </motion.div>

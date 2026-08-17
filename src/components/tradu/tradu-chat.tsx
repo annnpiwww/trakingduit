@@ -100,7 +100,7 @@ export function TraduChat({
     if (!debts) return [];
     return debts.map((d) => ({
       person: d.person,
-      type: d.type === "payable" ? "Utang lo ke dia" : "Piutang (dia ngutang ke lo)",
+      type: d.type === "payable" ? "Utang kamu ke dia" : "Piutang (dia ngutang ke kamu)",
       amount: d.amount,
       paid: d.paid_amount,
       remaining: d.amount - d.paid_amount,

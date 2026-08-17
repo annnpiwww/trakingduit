@@ -153,7 +153,7 @@ export default function ScanPage() {
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-semibold tracking-tight">Scan struk belanja</h2>
             <p className="mt-1 text-xs text-muted">
-              Foto struknya, nominal sama nama toko bakal keisi otomatis. Bisa lo edit sebelum disimpen.
+              Foto struknya, nominal sama nama toko bakal keisi otomatis. Bisa kamu edit sebelum disimpen.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1 text-[11px] text-muted">
               {ocr.unlimited ? (

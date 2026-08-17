@@ -533,36 +533,41 @@ export function BalanceCard({
   return (
     <motion.div
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,#003d7a,#0072c6)] p-5 text-white shadow-lg shadow-brand/30 sm:p-6",
+        "relative overflow-hidden rounded-3xl border border-red-400/40 bg-[linear-gradient(135deg,#991b1b_0%,#dc2626_40%,#ef4444_60%,#b91c1c_100%)] p-5 text-white shadow-xl shadow-red-950/25 sm:p-6",
         className,
       )}
       initial={getAnimation({ opacity: 0, y: 8 })}
       animate={getAnimation({ opacity: 1, y: 0 })}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
-      {/* Glass sheen + depth rings (dekoratif, bukan interaktif) */}
+      {/* Merah-Putih Glass sheen + depth rings (dekoratif) */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),transparent_42%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.20)_0%,transparent_45%,rgba(255,255,255,0.10)_100%)]"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-20 -bottom-28 size-72 rounded-full border border-white/10"
+        className="pointer-events-none absolute -right-20 -bottom-28 size-72 rounded-full border border-white/20"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-4 -bottom-6 size-32 rounded-full border border-white/[0.07]"
+        className="pointer-events-none absolute -right-4 -bottom-6 size-32 rounded-full border border-white/15"
+      />
+      {/* Decorative Merah-Putih flag ribbon accent line in background */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-red-600 via-white to-red-600 opacity-90"
       />
       {watermark ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute -right-2 bottom-0 select-none text-[7.5rem] leading-none font-black text-white/[0.06]"
+          className="pointer-events-none absolute -right-2 bottom-0 select-none text-[7.5rem] leading-none font-black text-white/10"
         >
           {watermark}
         </span>
       ) : null}
-      <div className="relative">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-[13px] font-medium text-white/85">
+      <div className="relative z-10">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-[13px] font-semibold text-white/95 drop-shadow-xs">
           <span className="flex min-w-0 items-center gap-2">
             {label}
             {onToggleHide ? (
@@ -570,7 +575,7 @@ export function BalanceCard({
                 type="button"
                 onClick={onToggleHide}
                 aria-label={hidden ? "Liat nominal" : "Sembunyiin nominal"}
-                className="text-white/80 transition hover:text-white"
+                className="text-white/90 transition hover:text-white"
                 whileTap={{ scale: 0.9 }}
               >
                 <AnimatePresence mode="wait" initial={false}>
@@ -590,8 +595,8 @@ export function BalanceCard({
           </span>
           {chip ? <span className="min-w-0 shrink-0">{chip}</span> : null}
         </div>
-        <p className="num mt-1 text-2xl sm:text-4xl lg:text-5xl leading-tight font-bold tracking-tight truncate">{value}</p>
-        {sub ? <div className="mt-2.5 text-xs text-white/80">{sub}</div> : null}
+        <p className="num mt-1 text-2xl sm:text-4xl lg:text-5xl leading-tight font-extrabold tracking-tight truncate text-white drop-shadow-sm">{value}</p>
+        {sub ? <div className="mt-2.5 text-xs font-medium text-white/90 drop-shadow-xs">{sub}</div> : null}
       </div>
     </motion.div>
   );
@@ -690,7 +695,7 @@ export function MenuTile({
     >
       <span
         className={cn(
-          "grid size-11 place-items-center rounded-xl transition-transform duration-200 group-hover:scale-105",
+          "grid size-11 place-items-center rounded-xl ring-1.5 ring-red-500/40 border border-white/20 bg-gradient-to-br from-red-500/10 via-rose-500/5 to-white/10 transition-transform duration-200 group-hover:scale-105 shadow-xs",
           tones[tone],
         )}
       >
