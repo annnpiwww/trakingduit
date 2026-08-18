@@ -269,9 +269,31 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
         const CHUNK_SIZE = 100;
         for (let i = 0; i < dirty.length; i += CHUNK_SIZE) {
           const chunk = dirty.slice(i, i + CHUNK_SIZE);
-          const { error } = await sb
+          let payload = chunk.map((r) => toRemote(r, userId, remote));
+          let { error } = await sb
             .from(remote)
-            .upsert(chunk.map((r) => toRemote(r, userId, remote)), { onConflict: "id" });
+            .upsert(payload, { onConflict: "id" });
+
+          if (error && remote === "wallets") {
+            const isAutoAppIdErr =
+              error.message?.includes("auto_app_identifier") ||
+              error.details?.includes("auto_app_identifier") ||
+              error.hint?.includes("auto_app_identifier") ||
+              error.code === "PGRST204" ||
+              error.code === "42703";
+            if (isAutoAppIdErr) {
+              const strippedPayload = payload.map((item) => {
+                const copy = { ...item };
+                delete copy.auto_app_identifier;
+                return copy;
+              });
+              const retry = await sb
+                .from(remote)
+                .upsert(strippedPayload, { onConflict: "id" });
+              error = retry.error;
+            }
+          }
+
           if (error) throw new Error(`${remote}: ${error.message}`);
           pushed += chunk.length;
 
