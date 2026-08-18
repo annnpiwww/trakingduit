@@ -198,9 +198,9 @@ export default function AutoTrackingSettingsPage() {
             <Smartphone className="size-5" />
           </span>
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-fg">Apa itu TrackingDuit Companion?</h2>
+            <h2 className="text-sm font-semibold text-fg">Apa itu Aplikasi Android TrackingDuit?</h2>
             <p className="text-xs leading-relaxed text-muted">
-              TrackingDuit Companion adalah aplikasi pendamping Android buatan TrackingDuit (~6.9 MB) yang berjalan di background HP Android untuk membaca notifikasi m-banking (BRImo, BCA) dan ShopeePay, lalu mencatatnya otomatis ke akun TrackingDuit kamu tanpa ribet.
+              Aplikasi Android TrackingDuit (~2.8 MB) menggabungkan Dashboard Keuangan lengkap dengan fitur pencatatan otomatis di background HP Android. Aplikasi secara otomatis membaca notifikasi m-banking (BRImo, BCA, Livin, BNI) dan e-wallet (GoPay, OVO, DANA, ShopeePay), lalu mencatatnya instan dengan In-App Toast & Sync real-time tanpa biaya Play Store.
             </p>
           </div>
         </div>
@@ -230,10 +230,10 @@ export default function AutoTrackingSettingsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
                 href="/download/trakingduit-companion.apk"
-                download="trakingduit-companion.apk"
+                download="TrackingDuit.apk"
                 className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg transition shadow-sm shadow-brand/20 hover:brightness-110"
               >
-                <Download className="size-4" /> Unduh APK Companion (6.9 MB)
+                <Download className="size-4" /> Unduh APK Android (2.8 MB)
               </a>
             </div>
           </div>
