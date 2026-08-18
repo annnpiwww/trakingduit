@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: "trakingduit",
   webDir: "out",
   server: {
-    androidScheme: "https",
+    url: "https://trakingduit.my.id",
+    cleartext: true,
   },
   plugins: {
     SplashScreen: {

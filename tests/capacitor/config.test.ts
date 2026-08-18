@@ -20,5 +20,6 @@ describe("Capacitor Configuration Setup", () => {
     expect(configContent).toContain('appId: "com.trakingduit.app"');
     expect(configContent).toContain('appName: "trakingduit"');
     expect(configContent).toContain('webDir: "out"');
+    expect(configContent).toContain('url: "https://trakingduit.my.id"');
   });
 });
