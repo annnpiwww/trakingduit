@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:android": "bash scripts/build-android.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
