@@ -54,9 +54,9 @@ const BASE_STEPS: TourStep[] = [
   },
   {
     icon: MonitorSmartphone,
-    title: "Pasang jadi aplikasi 📲",
-    body: "Install TrakingDuit di home screen biar kebuka lebih cepat, bisa dipakai offline, dan tampil fullscreen kayak app beneran. Nggak wajib — bisa dilewatin.",
-    tip: "Bisa install kapan aja dari Menu → Install Aplikasi.",
+    title: "Install App Android (Auto-Catat) 📲",
+    body: "Pasang Aplikasi Android TrackingDuit (~2.8 MB)! Aplikasi ini otomatis membaca notifikasi m-banking (BRImo, BCA, Livin, BNI) & e-wallet (GoPay, OVO, DANA, ShopeePay) untuk langsung mencatat transaksi kamu tanpa ribet ketik manual.",
+    tip: "Langsung klik tombol 'Unduh APK Android' untuk memasang.",
     install: true,
   },
   {
