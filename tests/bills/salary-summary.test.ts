@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getBillPaymentTransactionId, getSalarySummary } from "../../src/lib/bill-metrics";
+import { getBillPaymentTransactionId, getSalarySummary, stringToUUID } from "../../src/lib/bill-metrics";
 
 describe("bill metrics", () => {
   it("builds a stable payment transaction key per bill and cycle", () => {
-    expect(getBillPaymentTransactionId("bill-1", "2026-08-16")).toBe(
-      "bill-payment-bill-1-2026-08-16",
-    );
+    const id = getBillPaymentTransactionId("bill-1", "2026-08-16");
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(id).toBe(stringToUUID("bill-12026-08-16"));
+    expect(getBillPaymentTransactionId("bill-1", "2026-08-16")).toBe(id);
   });
 
   describe("getSalarySummary", () => {

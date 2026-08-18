@@ -2,6 +2,7 @@
 
 import type { Table } from "dexie";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { stringToUUID } from "../bill-metrics";
 import { db, getSetting, setSetting, seedIfEmpty } from "../db";
 import { pushNotification } from "../repo";
 import { supabaseBrowser } from "../supabase";
@@ -77,6 +78,14 @@ const REMOTE_COLUMNS: Record<string, readonly string[]> = {
   ],
 };
 
+const IS_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sanitizeUuid(id: string, tableName: string): string {
+  if (IS_UUID_REGEX.test(id)) return id;
+  console.warn(`[Sync] Non-UUID ID detected in ${tableName}: "${id}". Converting to valid UUID.`);
+  return stringToUUID(id);
+}
+
 /** Drop device-only fields, saring kolom yang tidak dikenal remote, lalu stamp ownership. */
 function toRemote<T extends Syncable>(
   row: T,
@@ -88,6 +97,9 @@ function toRemote<T extends Syncable>(
   const cleaned = allowed
     ? Object.fromEntries(Object.entries(rest).filter(([key]) => allowed.includes(key)))
     : rest;
+  if (typeof cleaned.id === "string") {
+    cleaned.id = sanitizeUuid(cleaned.id, remoteTable);
+  }
   return { ...cleaned, user_id: userId };
 }
 
