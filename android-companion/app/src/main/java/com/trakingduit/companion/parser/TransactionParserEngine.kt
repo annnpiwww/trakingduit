@@ -150,7 +150,7 @@ class TransactionParserEngine : NotificationParser {
         if (fullContent.isBlank()) return null
 
         for (rule in rules) {
-            if (!rule.packageNames.contains(packageName)) continue
+            if (!isRuleMatchingPackage(rule.packageNames, packageName)) continue
 
             val matcher = rule.regex.matcher(fullContent)
             if (matcher.find()) {
@@ -245,5 +245,39 @@ class TransactionParserEngine : NotificationParser {
         val dedupKey = "$packageName|$type|$formattedAmount|$sanitizedMerchantUpper|$minuteStr"
         val bytes = MessageDigest.getInstance("SHA-256").digest(dedupKey.toByteArray(Charsets.UTF_8))
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    companion object {
+        fun isRuleMatchingPackage(rulePackageNames: Set<String>, packageName: String): Boolean {
+            if (rulePackageNames.contains(packageName)) return true
+            val lowerPkg = packageName.lowercase(Locale.ROOT)
+            val isBriPkg = lowerPkg.startsWith("id.co.bri.") || lowerPkg.contains("brimo")
+            val isBcaPkg = lowerPkg.contains("bca")
+            val isShopeePkg = lowerPkg.contains("shopee")
+
+            return rulePackageNames.any { rulePkg ->
+                val lowerRule = rulePkg.lowercase(Locale.ROOT)
+                (isBriPkg && (lowerRule.contains("bri") || lowerRule.contains("brimo"))) ||
+                (isBcaPkg && lowerRule.contains("bca")) ||
+                (isShopeePkg && lowerRule.contains("shopee"))
+            }
+        }
+
+        fun isWhitelistedPackage(packageName: String): Boolean {
+            val whitelistedExact = setOf(
+                "id.co.bri.brimo",
+                "id.co.bca.mobile",
+                "id.co.bca.mybca",
+                "com.bca",
+                "com.shopeepay.id",
+                "com.shopee.id"
+            )
+            if (whitelistedExact.contains(packageName)) return true
+            val lowerPkg = packageName.lowercase(Locale.ROOT)
+            if (lowerPkg.startsWith("id.co.bri.") || lowerPkg.contains("brimo")) return true
+            if (lowerPkg.contains("bca")) return true
+            if (lowerPkg.contains("shopee")) return true
+            return false
+        }
     }
 }

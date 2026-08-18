@@ -10,11 +10,18 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.trakingduit.companion.R
 import com.trakingduit.companion.auth.TokenManager
-import com.trakingduit.companion.service.CompanionNotificationListenerService
+import com.trakingduit.companion.db.AppDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +31,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnScanQr: Button
     private lateinit var btnSaveManualPairing: Button
     private lateinit var etManualPairingJson: EditText
+
+    private lateinit var tvLogHeader: TextView
+    private lateinit var tvLogHistory: TextView
+    private lateinit var btnRefreshLogs: Button
+    private lateinit var btnClearLogs: Button
+
+    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +50,11 @@ class MainActivity : AppCompatActivity() {
         btnScanQr = findViewById(R.id.btnScanQr)
         btnSaveManualPairing = findViewById(R.id.btnSaveManualPairing)
         etManualPairingJson = findViewById(R.id.etManualPairingJson)
+
+        tvLogHeader = findViewById(R.id.tvLogHeader)
+        tvLogHistory = findViewById(R.id.tvLogHistory)
+        btnRefreshLogs = findViewById(R.id.btnRefreshLogs)
+        btnClearLogs = findViewById(R.id.btnClearLogs)
 
         switchNotificationAccess.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked != isNotificationServiceEnabled()) {
@@ -74,6 +93,20 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        btnRefreshLogs.setOnClickListener {
+            loadDiagnosticLogs()
+        }
+
+        btnClearLogs.setOnClickListener {
+            lifecycleScope.launch(Dispatchers.IO) {
+                AppDatabase.getInstance(applicationContext).notificationLogDao().clearAll()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Log berhasil dihapus", Toast.LENGTH_SHORT).show()
+                    loadDiagnosticLogs()
+                }
+            }
+        }
+
         updateUiState()
     }
 
@@ -92,6 +125,30 @@ class MainActivity : AppCompatActivity() {
             append("Status Pairing: ").append(if (isPaired) "TERPASANG ✅" else "BELUM PAIRING ❌")
         }
         tvStatus.text = statusMessage
+
+        loadDiagnosticLogs()
+    }
+
+    private fun loadDiagnosticLogs() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getInstance(applicationContext)
+            val logs = db.notificationLogDao().getRecentLogs(50)
+            val totalCount = db.notificationLogDao().getLogCount()
+
+            val formattedText = if (logs.isEmpty()) {
+                "Belum ada log notifikasi yang tertangkap."
+            } else {
+                logs.joinToString("\n\n") { log ->
+                    val timeStr = timeFormat.format(Date(log.timestamp))
+                    "[$timeStr] [${log.status}]\nPkg: ${log.packageName}\nDetail: ${log.details}"
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                tvLogHeader.text = "Diagnostic Log Notifikasi ($totalCount logs)"
+                tvLogHistory.text = formattedText
+            }
+        }
     }
 
     private fun isNotificationServiceEnabled(): Boolean {

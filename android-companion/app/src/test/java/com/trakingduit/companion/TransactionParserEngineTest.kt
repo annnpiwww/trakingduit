@@ -182,4 +182,22 @@ class TransactionParserEngineTest {
         assertNotNull(res3)
         assertEquals(20000.0, res3?.amount ?: 0.0, 0.01)
     }
+
+    @Test
+    fun testPackageNameVariationsAndWhitelist() {
+        val briVariantResult = parser.parse(
+            packageName = "id.co.bri.brimo.android",
+            title = "Notifikasi Transaksi",
+            text = "Notifikasi Transaksi QRIS di WARUNG XYZ sebesar Rp50.000 berhasil."
+        )
+        assertNotNull(briVariantResult)
+        assertEquals(50000.0, briVariantResult?.amount ?: 0.0, 0.01)
+        assertEquals("WARUNG XYZ", briVariantResult?.merchantName)
+
+        org.junit.Assert.assertTrue(TransactionParserEngine.isWhitelistedPackage("id.co.bri.brimo"))
+        org.junit.Assert.assertTrue(TransactionParserEngine.isWhitelistedPackage("id.co.bri.brimo.android"))
+        org.junit.Assert.assertTrue(TransactionParserEngine.isWhitelistedPackage("id.co.bca.mobile"))
+        org.junit.Assert.assertTrue(TransactionParserEngine.isWhitelistedPackage("com.shopee.id"))
+        org.junit.Assert.assertFalse(TransactionParserEngine.isWhitelistedPackage("com.whatsapp"))
+    }
 }
