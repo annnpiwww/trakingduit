@@ -81,6 +81,20 @@ class TransactionParserEngineTest {
     }
 
     @Test
+    fun parseBRImoTransferWithNomorRekeningTujuan_lowercaseRp() {
+        val result = parser.parse(
+            packageName = "id.co.bri.brimo",
+            title = "Notifikasi Transaksi",
+            text = "Transfer dari 1234567890 dengan nomor rekening tujuan 9876543210 sebesar rp 10.000.000 berhasil"
+        )
+
+        assertNotNull(result)
+        assertEquals("expense", result?.transactionType)
+        assertEquals(10000000.0, result?.amount ?: 0.0, 0.01)
+        assertEquals("9876543210", result?.merchantName)
+    }
+
+    @Test
     fun sha256HashConsistency_producesDeterministicHash() {
         val fixedDate = Date(1735689600000L) // Fixed timestamp
 

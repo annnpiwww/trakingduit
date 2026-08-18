@@ -56,11 +56,11 @@ class TransactionParserEngine : NotificationParser {
             merchantGroup = "merchant",
             amountGroup = "amount"
         ),
-        // BRImo Rule 1: Transfer dengan nomor tujuan
+        // BRImo Rule 1: Transfer dengan nomor (rekening) tujuan
         ParserRule(
             packageNames = setOf("id.co.bri.brimo"),
             type = "expense",
-            regex = Pattern.compile("(?i)transfer\\s+(?:dari\\s+.+?\\s+)?(?:dengan|ke)?\\s*(?:nomor\\s+tujuan\\s+)?(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
+            regex = Pattern.compile("(?i)transfer\\s+(?:dari\\s+.+?\\s+)?dengan\\s+nomor\\s+(?:rekening\\s+)?tujuan\\s+(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
             merchantGroup = "merchant",
             amountGroup = "amount"
         ),
@@ -70,6 +70,14 @@ class TransactionParserEngine : NotificationParser {
             type = "expense",
             regex = Pattern.compile("(?i)(?:transfer|pembayaran)\\s+(?:keluar|Sdr|QRIS|transaksi|ke)?\\s*(?:di|ke)?\\s*(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
             merchantGroup = "merchant",
+            amountGroup = "amount"
+        ),
+        // BRImo Rule 3: Fallback BRImo (transfer/pembayaran/pembelian/transaksi)
+        ParserRule(
+            packageNames = setOf("id.co.bri.brimo"),
+            type = "expense",
+            regex = Pattern.compile("(?i)(?:transfer|pembayaran|pembelian|transaksi)\\s+.*?sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
+            merchantGroup = "",
             amountGroup = "amount"
         ),
         // BRImo Rule 4: Fallback BRImo amount & merchant
@@ -150,9 +158,15 @@ class TransactionParserEngine : NotificationParser {
                 val amount = cleanAndParseAmount(rawAmount) ?: continue
 
                 var merchantName = if (rule.merchantGroup.isNotEmpty()) {
-                    matcher.group(rule.merchantGroup) ?: "Unknown Merchant"
+                    try {
+                        matcher.group(rule.merchantGroup)
+                    } catch (_: Exception) {
+                        null
+                    } ?: "Unknown Merchant"
                 } else {
-                    if (packageName.contains("shopee")) "ShopeePay Merchant" else "Unknown Merchant"
+                    if (packageName.contains("shopee")) "ShopeePay Merchant"
+                    else if (packageName.contains("bri")) "BRImo Transfer"
+                    else "Unknown Merchant"
                 }
 
                 // Sanitize merchant name (strip trailing status words or sentence end markers)
