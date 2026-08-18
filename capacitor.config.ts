@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.trakingduit.app",
-  appName: "TrackingDuit",
+  appName: "trakingduit",
   webDir: "out",
   server: {
     androidScheme: "https",

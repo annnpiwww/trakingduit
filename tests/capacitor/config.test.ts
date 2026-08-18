@@ -18,7 +18,7 @@ describe("Capacitor Configuration Setup", () => {
 
     const configContent = fs.readFileSync(configPath, "utf-8");
     expect(configContent).toContain('appId: "com.trakingduit.app"');
-    expect(configContent).toContain('appName: "TrackingDuit"');
+    expect(configContent).toContain('appName: "trakingduit"');
     expect(configContent).toContain('webDir: "out"');
   });
 });
