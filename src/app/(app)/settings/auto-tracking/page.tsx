@@ -174,11 +174,26 @@ export default function AutoTrackingSettingsPage() {
         </Badge>
       </div>
 
+      {/* Explanation Banner */}
+      <Card className="border-brand/20 bg-brand/5 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+            <Smartphone className="size-5" />
+          </span>
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold text-fg">Apa itu TrackingDuit Companion?</h2>
+            <p className="text-xs leading-relaxed text-muted">
+              TrackingDuit Companion adalah aplikasi pendamping Android buatan TrackingDuit (~6.9 MB) yang berjalan di background HP Android untuk membaca notifikasi m-banking (BRImo, BCA) dan ShopeePay, lalu mencatatnya otomatis ke akun TrackingDuit kamu tanpa ribet.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Main Installation Steps Card */}
       <Card>
         <CardHeader
           title="Panduan Instalasi & Hubungkan App"
-          subtitle="3 langkah mudah untuk mengaktifkan pencatatan transaksi otomatis"
+          subtitle="4 langkah mudah untuk mengaktifkan pencatatan transaksi otomatis"
         />
 
         <div className="divide-y divide-border p-4">
@@ -188,24 +203,21 @@ export default function AutoTrackingSettingsPage() {
               <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
                 1
               </span>
-              <h3 className="text-sm font-medium">Langkah 1: Unduh APK Companion</h3>
+              <h3 className="text-sm font-medium">Langkah 1: Unduh &amp; Install APK</h3>
             </div>
+
+            <p className="text-xs text-muted">
+              Tap tombol &quot;Unduh APK Companion (6.9 MB)&quot; di bawah. Setelah selesai, buka file <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-fg">.apk</code> di HP Android dan klik Install (Pilih &apos;Izinkan dari sumber ini&apos; jika muncul peringatan keamanan Android).
+            </p>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
-                href="/downloads/trakingduit-companion.apk"
+                href="/download/trakingduit-companion.apk"
                 download="trakingduit-companion.apk"
                 className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-medium text-brand-fg transition shadow-sm shadow-brand/20 hover:brightness-110"
               >
-                <Download className="size-4" /> Unduh Companion APK
+                <Download className="size-4" /> Unduh APK Companion (6.9 MB)
               </a>
-            </div>
-
-            <div className="rounded-lg bg-surface-2 p-3 text-xs text-muted">
-              <p>
-                <strong className="font-medium text-fg">Petunjuk:</strong> Buka file .apk yang
-                didownload di HP Android &gt; pilih Install (Izinkan Install dari sumber tidak dikenal jika diminta).
-              </p>
             </div>
           </div>
 
@@ -215,14 +227,26 @@ export default function AutoTrackingSettingsPage() {
               <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
                 2
               </span>
-              <h3 className="text-sm font-medium">Langkah 2: Buka App &amp; Hubungkan Akun</h3>
+              <h3 className="text-sm font-medium">Langkah 2: Buka App Companion di HP</h3>
             </div>
 
-            <div className="rounded-lg bg-surface-2 p-3 text-xs text-muted">
-              <p>
-                Buka aplikasi Companion di Android, scan QR di bawah atau paste kode autentikasi.
-              </p>
+            <p className="text-xs text-muted">
+              Buka aplikasi <code className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-fg">TrackingDuit Companion</code> yang baru saja terinstall di HP Android kamu.
+            </p>
+          </div>
+
+          {/* STEP 3 */}
+          <div className="space-y-3 py-5">
+            <div className="flex items-center gap-2">
+              <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
+                3
+              </span>
+              <h3 className="text-sm font-medium">Langkah 3: Sambungkan Akun</h3>
             </div>
+
+            <p className="text-xs text-muted">
+              Di dalam app Companion, tap <strong className="text-fg font-semibold">Scan QR Code</strong> (arahkan kamera HP ke QR Code di bawah) ATAU salin <strong className="text-fg font-semibold">Kode Pairing</strong> dan paste di aplikasi Companion.
+            </p>
 
             <div className="grid gap-4 sm:grid-cols-2 sm:items-center">
               {/* QR Code Container */}
@@ -238,7 +262,7 @@ export default function AutoTrackingSettingsPage() {
 
               {/* Pairing Code String / One-tap Copy */}
               <div className="space-y-3">
-                <Field label="Kode Autentikasi / Payload Session">
+                <Field label="Kode Pairing / Payload Session">
                   <div className="relative">
                     <textarea
                       readOnly
@@ -258,11 +282,11 @@ export default function AutoTrackingSettingsPage() {
                 >
                   {copied ? (
                     <>
-                      <Check className="size-4 text-income" /> Kode Tersalin!
+                      <Check className="size-4 text-income" /> Kode Pairing Tersalin!
                     </>
                   ) : (
                     <>
-                      <Copy className="size-4 text-muted" /> Salin Kode Autentikasi
+                      <Copy className="size-4 text-muted" /> Salin Kode Pairing
                     </>
                   )}
                 </Button>
@@ -270,13 +294,13 @@ export default function AutoTrackingSettingsPage() {
             </div>
           </div>
 
-          {/* STEP 3 */}
+          {/* STEP 4 */}
           <div className="space-y-3 pt-5">
             <div className="flex items-center gap-2">
               <span className="flex size-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
-                3
+                4
               </span>
-              <h3 className="text-sm font-medium">Langkah 3: Aktifkan Izin Notifikasi</h3>
+              <h3 className="text-sm font-medium">Langkah 4: Izinkan Akses Notifikasi</h3>
             </div>
 
             <div className="flex items-start gap-3 rounded-xl border border-border bg-surface-2 p-3.5">
@@ -286,8 +310,7 @@ export default function AutoTrackingSettingsPage() {
               <div className="space-y-1 text-xs">
                 <p className="font-medium text-fg">Izin Notification Access Android</p>
                 <p className="text-muted">
-                  Di HP Android, masuk ke Pengaturan HP &gt; Akses Notifikasi (Notification Access) &gt;
-                  Aktifkan TrackingDuit Companion.
+                  Di HP Android, buka <strong className="text-fg font-semibold">Pengaturan HP &gt; Akses Notifikasi (Notification Access)</strong> &gt; aktifkan tombol untuk <strong className="text-fg font-semibold">TrackingDuit Companion</strong>.
                 </p>
               </div>
             </div>

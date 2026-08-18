@@ -38,6 +38,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# android build
+android-companion/**/build/
+android-companion/.gradle/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
