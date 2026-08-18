@@ -1,5 +1,6 @@
 package com.trakingduit.companion.service
 
+import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.work.OneTimeWorkRequestBuilder
@@ -34,14 +35,32 @@ class CompanionNotificationListenerService : NotificationListenerService() {
 
         if (!whitelistedPackages.contains(packageName)) return
 
-        val extras = sbnNotNull.notification?.extras ?: return
-        val title = extras.getCharSequence("android.title")?.toString() ?: ""
-        val text = extras.getCharSequence("android.text")?.toString() ?: ""
+        val notification = sbnNotNull.notification ?: return
+        val extras = notification.extras ?: return
 
-        if (title.isBlank() && text.isBlank()) return
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
+        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
+
+        val textLinesRaw = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+        val textLines = textLinesRaw?.filterNotNull()?.joinToString(" ") ?: ""
+
+        val tickerText = notification.tickerText?.toString() ?: ""
+
+        val effectiveBigText = listOf(bigText, textLines).filter { it.isNotBlank() }.joinToString(" ")
+
+        if (title.isBlank() && text.isBlank() && subText.isBlank() && effectiveBigText.isBlank() && tickerText.isBlank()) return
 
         serviceScope.launch {
-            val parsedResult = parserEngine.parse(packageName, title, text) ?: return@launch
+            val parsedResult = parserEngine.parse(
+                packageName = packageName,
+                title = title,
+                text = text,
+                subText = subText,
+                bigText = effectiveBigText,
+                tickerText = tickerText
+            ) ?: return@launch
 
             val db = AppDatabase.getInstance(applicationContext)
             val alreadyProcessed = db.processedNotificationDao().hasHash(parsedResult.dedupHash)

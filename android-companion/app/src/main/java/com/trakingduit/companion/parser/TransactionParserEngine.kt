@@ -26,7 +26,15 @@ data class ParserRule(
 )
 
 interface NotificationParser {
-    fun parse(packageName: String, title: String, text: String, customDate: Date? = null): ParsedNotification?
+    fun parse(
+        packageName: String,
+        title: String,
+        text: String,
+        subText: String = "",
+        bigText: String = "",
+        tickerText: String = "",
+        customDate: Date? = null
+    ): ParsedNotification?
 }
 
 class TransactionParserEngine : NotificationParser {
@@ -114,8 +122,24 @@ class TransactionParserEngine : NotificationParser {
         )
     )
 
-    override fun parse(packageName: String, title: String, text: String, customDate: Date?): ParsedNotification? {
-        val fullContent = "$title $text".trim()
+    override fun parse(
+        packageName: String,
+        title: String,
+        text: String,
+        subText: String,
+        bigText: String,
+        tickerText: String,
+        customDate: Date?
+    ): ParsedNotification? {
+        val fullContent = listOf(title, text, subText, bigText, tickerText)
+            .flatMap { it.split("\n") }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(" ")
+            .trim()
+
+        if (fullContent.isBlank()) return null
 
         for (rule in rules) {
             if (!rule.packageNames.contains(packageName)) continue
@@ -123,13 +147,12 @@ class TransactionParserEngine : NotificationParser {
             val matcher = rule.regex.matcher(fullContent)
             if (matcher.find()) {
                 val rawAmount = matcher.group(rule.amountGroup) ?: continue
-                val cleanAmountStr = rawAmount.replace(".", "").replace(",", ".")
-                val amount = cleanAmountStr.toDoubleOrNull() ?: continue
+                val amount = cleanAndParseAmount(rawAmount) ?: continue
 
                 var merchantName = if (rule.merchantGroup.isNotEmpty()) {
                     matcher.group(rule.merchantGroup) ?: "Unknown Merchant"
                 } else {
-                    "ShopeePay Merchant"
+                    if (packageName.contains("shopee")) "ShopeePay Merchant" else "Unknown Merchant"
                 }
 
                 // Sanitize merchant name (strip trailing status words or sentence end markers)
@@ -160,6 +183,37 @@ class TransactionParserEngine : NotificationParser {
             }
         }
         return null
+    }
+
+    private fun cleanAndParseAmount(raw: String): Double? {
+        var str = raw.trim().trimEnd('.', ',')
+        if (str.isEmpty()) return null
+
+        if (str.contains(",") && str.contains(".")) {
+            val lastComma = str.lastIndexOf(',')
+            val lastDot = str.lastIndexOf('.')
+            if (lastComma > lastDot) {
+                // Indonesian format: 1.000.000,00 -> remove dots, replace comma with dot
+                str = str.replace(".", "").replace(",", ".")
+            } else {
+                // US format: 1,000,000.00 -> remove commas
+                str = str.replace(",", "")
+            }
+        } else if (str.contains(",")) {
+            // Only comma: e.g. 20000,00 -> 20000.00
+            str = str.replace(",", ".")
+        } else if (str.contains(".")) {
+            // Only dot: e.g. 20.000 or 1.500.000 (Indonesian thousands separator)
+            val parts = str.split(".")
+            if (parts.size > 2 || (parts.size == 2 && parts[1].length == 3)) {
+                str = str.replace(".", "")
+            } else if (parts.size == 2 && parts[1].length != 3) {
+                // e.g. 20000.00 -> keep dot
+            } else {
+                str = str.replace(".", "")
+            }
+        }
+        return str.toDoubleOrNull()
     }
 
     private fun cleanMerchantName(raw: String): String {

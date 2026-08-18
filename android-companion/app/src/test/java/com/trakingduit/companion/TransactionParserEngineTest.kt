@@ -122,4 +122,50 @@ class TransactionParserEngineTest {
         )
         assertNull(result)
     }
+
+    @Test
+    fun parseBRImoWithBigTextAndSubText_returnsValidNotification() {
+        val result = parser.parse(
+            packageName = "id.co.bri.brimo",
+            title = "BRImo",
+            text = "",
+            subText = "Notifikasi Transaksi",
+            bigText = "Transfer masuk sebesar Rp 250.000,00 dari ANITA."
+        )
+
+        assertNotNull(result)
+        assertEquals("income", result?.transactionType)
+        assertEquals(250000.0, result?.amount ?: 0.0, 0.01)
+        assertEquals("ANITA", result?.merchantName)
+    }
+
+    @Test
+    fun parseNumberFormats_cleansCorrectly() {
+        // Test 20.000,00 with trailing dot
+        val res1 = parser.parse(
+            packageName = "id.co.bri.brimo",
+            title = "Notifikasi Transaksi",
+            text = "Transfer masuk sebesar 20.000,00. dari TOKO 1"
+        )
+        assertNotNull(res1)
+        assertEquals(20000.0, res1?.amount ?: 0.0, 0.01)
+
+        // Test 20.000
+        val res2 = parser.parse(
+            packageName = "id.co.bri.brimo",
+            title = "Notifikasi Transaksi",
+            text = "Transfer masuk sebesar Rp 20.000 dari TOKO 2"
+        )
+        assertNotNull(res2)
+        assertEquals(20000.0, res2?.amount ?: 0.0, 0.01)
+
+        // Test US style 20,000.00
+        val res3 = parser.parse(
+            packageName = "id.co.bri.brimo",
+            title = "Notifikasi Transaksi",
+            text = "Transfer masuk sebesar Rp 20,000.00 dari TOKO 3"
+        )
+        assertNotNull(res3)
+        assertEquals(20000.0, res3?.amount ?: 0.0, 0.01)
+    }
 }
