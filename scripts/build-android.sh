@@ -3,23 +3,43 @@ set -e
 
 echo "=== BUILDING TRACKINGDUIT ANDROID APP FOR PLAY STORE ==="
 
-# 1. Add Android platform if not initialized
-if [ ! -d "android" ] || [ ! -f "android/build.gradle" ]; then
-    echo "Adding Android platform..."
+# Ensure web assets directory & fallback index.html exist for Capacitor sync
+mkdir -p out
+if [ ! -f "out/index.html" ]; then
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>TrackingDuit</title></head><body><script>window.location.href="/";</script></body></html>' > out/index.html
+fi
+
+# 1. Check if Android platform needs initialization
+if [ ! -f "android/build.gradle" ]; then
+    echo "Initializing Android Capacitor project..."
+    if [ -d "android" ]; then
+        echo "Backing up custom Kotlin source files..."
+        mkdir -p .temp_android_backup
+        cp -r android/app/src/main/* .temp_android_backup/
+        rm -rf android
+    fi
+
     npx cap add android
+
+    if [ -d ".temp_android_backup" ]; then
+        echo "Restoring custom Kotlin source files and AndroidManifest..."
+        cp -r .temp_android_backup/* android/app/src/main/
+        rm -rf .temp_android_backup
+    fi
 fi
 
 # 2. Sync web assets & plugins to Android project
-echo "Syncing Capacitor plugins and assets..."
+echo "Syncing Capacitor plugins and web assets..."
 npx cap sync android
 
-# 3. Chmod gradlew if exists
+# 3. Check gradlew executable and build release
 if [ -f "android/gradlew" ]; then
     chmod +x android/gradlew
     echo "Building Android Release APK / AAB Bundle..."
     cd android
     ./gradlew assembleRelease bundleRelease
     cd ..
+    echo ""
     echo "=== BUILD COMPLETE! ==="
     echo "APK Output: android/app/build/outputs/apk/release/app-release-unsigned.apk"
     echo "AAB Output: android/app/build/outputs/bundle/release/app-release.aab"
