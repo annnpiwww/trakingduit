@@ -50,6 +50,9 @@ export default function LoginPage() {
         if (pin && !/^\d{6}$/.test(pin)) throw new Error("PIN-nya 6 digit angka ya");
         await signInLocal(name, pin || undefined);
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("td:login_success"));
+      }
       router.replace("/dashboard");
     } catch (err) {
       if (err instanceof Error) {

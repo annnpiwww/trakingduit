@@ -204,6 +204,9 @@ export function OnboardingTutorial() {
     localStorage.setItem(ONBOARD_KEY, "1");
     setVisible(false);
     setStep(0);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("td:tutorial_finished"));
+    }
   }, []);
 
   const next = React.useCallback(() => {

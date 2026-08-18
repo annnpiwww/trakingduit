@@ -32,28 +32,61 @@ class NotificationListenerPlugin : Plugin() {
 
     @PluginMethod
     fun checkPermission(call: PluginCall) {
-        val context: Context = context
-        val packageName = context.packageName
-        val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
-        val isGranted = enabledPackages.contains(packageName)
+        try {
+            val ctx: Context = context
+            val packageName = ctx.packageName
+            val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(ctx)
+            val isGranted = enabledPackages.contains(packageName)
 
-        val ret = JSObject().apply {
-            put("granted", isGranted)
+            val ret = JSObject().apply {
+                put("granted", isGranted)
+            }
+            call.resolve(ret)
+        } catch (e: Exception) {
+            val ret = JSObject().apply {
+                put("granted", false)
+                put("error", e.message)
+            }
+            call.resolve(ret)
         }
-        call.resolve(ret)
     }
 
     @PluginMethod
     fun requestPermission(call: PluginCall) {
-        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
+        try {
+            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            val currentActivity = activity ?: bridge?.activity
+            if (currentActivity != null) {
+                currentActivity.startActivity(intent)
+            } else {
+                context.startActivity(intent)
+            }
 
-        val ret = JSObject().apply {
-            put("requested", true)
+            val ret = JSObject().apply {
+                put("requested", true)
+                put("granted", false)
+            }
+            call.resolve(ret)
+        } catch (e: Exception) {
+            // Fallback for devices with custom settings actions
+            try {
+                val fallbackIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallbackIntent)
+                
+                val ret = JSObject().apply {
+                    put("requested", true)
+                    put("fallback", true)
+                }
+                call.resolve(ret)
+            } catch (err: Exception) {
+                call.reject("Tidak dapat membuka pengaturan: " + err.message)
+            }
         }
-        call.resolve(ret)
     }
 
     @PluginMethod

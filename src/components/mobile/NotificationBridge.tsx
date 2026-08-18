@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Bell, Sparkles, X, ChevronRight } from "lucide-react";
-import { useToast } from "@/components/ui";
+import { Bell, Sparkles, X, ShieldCheck, CheckCircle2, ChevronRight } from "lucide-react";
+import { useToast, Button } from "@/components/ui";
 import { useNotificationListener } from "@/lib/capacitor/useNotificationListener";
 import { BankNotificationPayload } from "@/lib/capacitor/notification-listener";
 
@@ -11,7 +11,8 @@ export default function NotificationBridge() {
   const { isSupported, hasPermission, requestPermission, latestNotification } =
     useNotificationListener();
   const handledIdRef = React.useRef<string | null>(null);
-  const [dismissed, setDismissed] = React.useState<boolean>(false);
+  const [modalOpen, setModalOpen] = React.useState<boolean>(false);
+  const [requesting, setRequesting] = React.useState<boolean>(false);
 
   const handleBankNotification = React.useCallback(
     async (payload: BankNotificationPayload) => {
@@ -55,41 +56,139 @@ export default function NotificationBridge() {
     }
   }, [latestNotification, handleBankNotification]);
 
-  if (!isSupported || hasPermission || dismissed) {
+  // Listen for login_success or tutorial_finished events to open permission modal
+  React.useEffect(() => {
+    if (!isSupported || hasPermission) return;
+
+    const openPermissionModal = () => {
+      if (!hasPermission) {
+        setModalOpen(true);
+      }
+    };
+
+    window.addEventListener("td:login_success", openPermissionModal);
+    window.addEventListener("td:tutorial_finished", openPermissionModal);
+
+    // Auto show modal if user is on mobile native app and hasn't granted permission yet
+    const onboarded = localStorage.getItem("td.onboarded.v2");
+    const modalDismissed = sessionStorage.getItem("td.permission_dismissed");
+    if (onboarded && !modalDismissed && !hasPermission) {
+      const timer = setTimeout(() => {
+        setModalOpen(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    return () => {
+      window.removeEventListener("td:login_success", openPermissionModal);
+      window.removeEventListener("td:tutorial_finished", openPermissionModal);
+    };
+  }, [isSupported, hasPermission]);
+
+  const handleGrantPermission = async () => {
+    setRequesting(true);
+    try {
+      await requestPermission();
+    } catch {
+      toast("Gagal membuka pengaturan, coba buka Pengaturan Android > Akses Notifikasi secara manual", "error");
+    } finally {
+      setRequesting(false);
+      setModalOpen(false);
+    }
+  };
+
+  const handleClose = () => {
+    sessionStorage.setItem("td.permission_dismissed", "1");
+    setModalOpen(false);
+  };
+
+  if (!modalOpen || hasPermission) {
     return null;
   }
 
   return (
-    <div className="sticky top-0 z-50 bg-gradient-to-r from-brand to-indigo-600 px-4 py-2.5 text-brand-fg shadow-md">
-      <div className="mx-auto flex max-w-md items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/20 backdrop-blur-sm">
-            <Bell className="size-4 text-white" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-2xl space-y-4">
+        {/* Close Button */}
+        <button
+          onClick={handleClose}
+          className="absolute right-3.5 top-3.5 grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-fg transition"
+          title="Tutup"
+        >
+          <X className="size-4" />
+        </button>
+
+        {/* Header Icon */}
+        <div className="flex items-center gap-3">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand/10 text-brand">
+            <Bell className="size-6 text-brand animate-pulse" />
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold flex items-center gap-1 leading-tight text-white">
-              Aktifkan Catat Otomatis <Sparkles className="size-3 text-amber-300 fill-amber-300" />
+          <div>
+            <h3 className="text-base font-bold text-fg flex items-center gap-1.5">
+              Aktifkan Catat Otomatis <Sparkles className="size-4 text-amber-400 fill-amber-400" />
+            </h3>
+            <p className="text-xs text-muted">Fitur Unggulan Aplikasi Android</p>
+          </div>
+        </div>
+
+        {/* Body Description */}
+        <p className="text-xs leading-relaxed text-muted">
+          Aplikasi membutuhkan <strong className="text-fg font-semibold">Izin Akses Notifikasi</strong> agar dapat mendeteksi transaksi m-banking &amp; e-wallet kamu secara otomatis.
+        </p>
+
+        {/* 3 Step Instructions */}
+        <div className="space-y-2 rounded-xl bg-surface-2 p-3 text-xs">
+          <div className="flex items-start gap-2">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-brand-fg">
+              1
+            </span>
+            <p className="text-fg">
+              Tap <strong className="font-semibold text-brand">Izinkan Akses Notifikasi</strong> di bawah.
             </p>
-            <p className="text-[11px] text-white/80 truncate">
-              Izinkan notifikasi bank agar transaksi langsung tercatat
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-brand-fg">
+              2
+            </span>
+            <p className="text-fg">
+              Halaman Pengaturan Android akan terbuka otomatis.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-brand-fg">
+              3
+            </span>
+            <p className="text-fg">
+              Aktifkan saklar <strong className="font-semibold text-brand">trakingduit</strong> ke posisi ON.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => requestPermission()}
-            className="flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-brand transition hover:bg-white/90 active:scale-95 shadow-sm"
+        {/* Benefits Badges */}
+        <div className="flex items-center gap-2 pt-1 text-[11px] text-muted">
+          <ShieldCheck className="size-4 shrink-0 text-income" />
+          <span>Privasi Aman: Data diproses lokal &amp; dienkripsi.</span>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center gap-2.5 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 text-xs"
+            onClick={handleClose}
           >
-            Izinkan <ChevronRight className="size-3.5" />
-          </button>
-          <button
-            onClick={() => setDismissed(true)}
-            className="grid size-6 place-items-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
-            title="Tutup"
+            Nanti Saja
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 text-xs gap-1.5 bg-brand text-brand-fg hover:brightness-110 shadow-sm"
+            onClick={handleGrantPermission}
+            disabled={requesting}
           >
-            <X className="size-3.5" />
-          </button>
+            <CheckCircle2 className="size-4" />
+            {requesting ? "Membuka..." : "Izinkan Sekarang"}
+          </Button>
         </div>
       </div>
     </div>
