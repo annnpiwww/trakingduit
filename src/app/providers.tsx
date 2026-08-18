@@ -6,6 +6,7 @@ import { SessionProvider } from "@/lib/session";
 import { AutoSyncProvider } from "@/lib/sync/auto-sync";
 import { ToastProvider, useToast } from "@/components/ui";
 import { registerMutationErrorHandler } from "@/lib/repo";
+import NotificationBridge from "@/components/mobile/NotificationBridge";
 
 /** Surface failed Dexie writes (repo mutations) as user-facing error toasts. */
 function MutationErrorBridge() {
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <SessionProvider>
         <ToastProvider>
           <MutationErrorBridge />
+          <NotificationBridge />
           <AutoSyncProvider>{children}</AutoSyncProvider>
         </ToastProvider>
       </SessionProvider>
