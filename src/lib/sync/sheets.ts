@@ -154,7 +154,7 @@ export async function syncGoogleSheet(): Promise<SyncResult> {
     | { error: string };
 
   if (!res.ok || "error" in json) {
-    const message = "error" in json ? json.error : "Sinkronisasi gagal";
+    const message = "error" in json ? json.error : "Sinkron gagal";
     await logSync({
       target: "google-sheet",
       direction: "two-way",

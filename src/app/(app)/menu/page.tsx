@@ -24,14 +24,14 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/premium", label: "Premium", desc: "Buka semua fitur AI tanpa batas", icon: Crown },
-  { href: "/scan", label: "Scan Nota", desc: "Foto struk, auto-catat jadi transaksi", icon: ScanLine },
-  { href: "/wallets", label: "Dompet", desc: "Atur dompet, bank, & e-wallet kamu", icon: Wallet },
-  { href: "/debts", label: "Utang Piutang", desc: "Catat utang & piutang, biar nggak lupa nagih", icon: HandCoins },
-  { href: "/budgets", label: "Budget", desc: "Set budget, biar gak boncos", icon: CreditCard },
-  { href: "/goals", label: "Target Nabung", desc: "Pantau progres menabung", icon: Target },
+  { href: "/scan", label: "Scan Nota", desc: "Foto struk, lalu otomatis jadi transaksi", icon: ScanLine },
+  { href: "/wallets", label: "Dompet", desc: "Atur dompet, rekening bank, dan e-wallet kamu", icon: Wallet },
+  { href: "/debts", label: "Utang Piutang", desc: "Catat utang dan piutang, biar nggak lupa menagih", icon: HandCoins },
+  { href: "/budgets", label: "Budget", desc: "Atur budget, biar saldo nggak cepat habis", icon: CreditCard },
+  { href: "/goals", label: "Target Menabung", desc: "Pantau progres menabung", icon: Target },
   { href: "/bills", label: "Tagihan & Cicilan", desc: "Pengingat jatuh tempo", icon: CalendarClock },
-  { href: "/analytics", label: "Analisis", desc: "Cek tren pengeluaran kamu", icon: ChartPie },
-  { href: "/settings", label: "Pengaturan", desc: "Sinkron, data, tema, PIN", icon: Settings },
+  { href: "/analytics", label: "Analisis", desc: "Lihat tren pengeluaran kamu", icon: ChartPie },
+  { href: "/settings", label: "Pengaturan", desc: "Sinkron, data, tema, dan PIN", icon: Settings },
 ];
 
 export default function MenuPage() {

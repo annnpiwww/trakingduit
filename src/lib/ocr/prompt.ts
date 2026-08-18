@@ -109,7 +109,7 @@ export async function ocrViaOpenAI(
         if (attempt < 2) await sleepAbortable(1000 * (attempt + 1), controller);
         continue;
       }
-      // 429 = rate limit persist (bisa menit), retry gak nolong — langsung
+      // 429 = rate limit persist (bisa menit), retry nggak nolong — langsung
       // skip ke model fallback. 503 = transient, retry 1x singkat.
       if (res.status === 429) break;
       if (res.status !== 503) break;
@@ -148,7 +148,7 @@ function sleepAbortable(ms: number, controller: AbortController): Promise<void> 
 /** Panggil Google Gemini API langsung (vision), balikin teks mentah; throw kalau gagal. */
 export async function ocrViaGemini(image: string, timeoutMs = 20_000): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY belum diset");
+  if (!key) throw new Error("GEMINI_API_KEY belum diatur");
   const model = process.env.GEMINI_OCR_MODEL ?? "gemini-3.5-flash";
   const { mimeType, data } = splitDataUrl(image);
   const controller = new AbortController();

@@ -38,7 +38,7 @@ export interface Category extends Syncable {
   is_default: 0 | 1;
   /** User can toggle this to hide category from transaction form. */
   active: 0 | 1;
-  /** Keywords used by the OCR parser + auto-categorizer. */
+  /** Keywords used by the OCR parser + otomatis-categorizer. */
   keywords: string[];
 }
 
@@ -92,7 +92,7 @@ export type DebtType = "payable" | "receivable";
  * ke kita (piutang). Lunas saat paid_amount >= amount.
  */
 export interface Debt extends Syncable {
-  /** Nama orang lawan (yang ngutang / yang diutangi). */
+  /** Nama orang lawan (yang berutang / yang diutangi). */
   person: string;
   type: DebtType;
   amount: number;

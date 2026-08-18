@@ -164,8 +164,13 @@ export class TrackingDuitDB extends Dexie {
 
     // Version 6: convert existing salaries to deterministic IDs
     this.version(6).upgrade(async (tx) => {
-      const salaries = await tx.table("salaries").toArray();
-      const groups = new Map<string, any[]>();
+      type LegacySalaryRecord = Record<string, unknown> & {
+        id: string;
+        month?: string;
+        updated_at?: string;
+      };
+      const salaries = (await tx.table("salaries").toArray()) as LegacySalaryRecord[];
+      const groups = new Map<string, LegacySalaryRecord[]>();
       for (const s of salaries) {
         if (!s.month) continue;
         const list = groups.get(s.month) || [];

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSession } from "@/lib/session";
 import { isSupabaseConfigured, supabaseBrowser } from "@/lib/supabase";
 import { lastSupabaseSync, syncSupabase } from "./supabase-sync";
+import { registerMutationCallback } from "@/lib/repo";
 
 /** Jeda antar sinkron saat semuanya sehat. */
 const INTERVAL_MS = 60_000;
@@ -12,7 +13,7 @@ const RETRY_BASE_MS = 5_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
 export type AutoSyncState =
-  /** Supabase belum dikonfigurasi — app jalan lokal saja. */
+  /** Supabase belum diatur — app jalan lokal saja. */
   | "disabled"
   /** Supabase aktif tapi belum login akun cloud. */
   | "local"
@@ -136,7 +137,6 @@ export function AutoSyncProvider({ children }: { children: React.ReactNode }) {
     const kick = () => scheduleNext(0);
     kickRef.current = kick;
 
-    const { registerMutationCallback } = require("@/lib/repo");
     registerMutationCallback(() => {
       kick();
     });

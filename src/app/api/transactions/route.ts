@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
   if (walletError || !wallet) {
     return NextResponse.json(
-      { error: "Wallet tidak ditemukan atau bukan milik Anda" },
+      { error: "Wallet tidak ditemukan atau bukan milik kamu" },
       { status: 403 },
     );
   }
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
 
     if (toWalletError || !toWallet) {
       return NextResponse.json(
-        { error: "Destination wallet tidak ditemukan atau bukan milik Anda" },
+        { error: "Destination wallet tidak ditemukan atau bukan milik kamu" },
         { status: 403 },
       );
     }
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
 
     if (categoryError || !category) {
       return NextResponse.json(
-        { error: "Category tidak ditemukan atau bukan milik Anda" },
+        { error: "Category tidak ditemukan atau bukan milik kamu" },
         { status: 403 },
       );
     }

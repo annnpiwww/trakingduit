@@ -63,7 +63,7 @@ export function buildInsights({
     out.push({
       id: "negative-net",
       title: "Pengeluaran melebihi pemasukan",
-      body: `Bulan ini defisit ${formatIDR(Math.abs(t.net))}. Cek kategori terbesar dan tekan pengeluaran non-esensial.`,
+      body: `Bulan ini minus ${formatIDR(Math.abs(t.net))}. Cek kategori terbesar dan tekan pengeluaran yang belum wajib.`,
       tone: "danger",
       weight: 100,
     });
@@ -74,7 +74,7 @@ export function buildInsights({
       title: `Rasio menabung ${Math.round(rate * 100)}%`,
       body:
         rate >= 0.2
-          ? `Sisa ${formatIDR(t.net)} dari pemasukan. Sudah di atas patokan sehat 20%.`
+          ? `Sisa ${formatIDR(t.net)} dari pemasukan. Sudah di atas patokan aman 20%.`
           : `Sisa ${formatIDR(t.net)}. Patokan sehat 20% - perlu naik ${formatIDR(t.income * 0.2 - t.net)} lagi.`,
       tone: rate >= 0.2 ? "positive" : "warning",
       weight: 70,
@@ -90,7 +90,7 @@ export function buildInsights({
     if (elapsed >= 5 && projected > t.expense * 1.05) {
       out.push({
         id: "projection",
-        title: `Proyeksi akhir bulan ${formatIDR(projected)}`,
+        title: `Perkiraan akhir bulan ${formatIDR(projected)}`,
         body: `Laju ${formatIDR(averageDailySpend(monthTx, month))}/hari. Sisa ${daysInMonth - elapsed} hari lagi${
           t.income ? `, batas aman ${formatIDR(t.income * 0.8)}.` : "."
         }`,
@@ -146,7 +146,7 @@ export function buildInsights({
       id: `budget-${b.id}`,
       title:
         ratio >= 100
-          ? `Budget ${cat?.name ?? "kategori"} jebol ${ratio - 100}%`
+          ? `Budget ${cat?.name ?? "kategori"} terlewati ${ratio - 100}%`
           : `Budget ${cat?.name ?? "kategori"} tersisa ${formatIDR(b.amount - spent)}`,
       body: `Terpakai ${formatIDR(spent)} dari ${formatIDR(b.amount)}.`,
       tone: ratio >= 100 ? "danger" : "warning",
@@ -161,7 +161,7 @@ export function buildInsights({
   if (peak && weekTotal && peak.expense / weekTotal >= 0.28) {
     out.push({
       id: "weekday",
-      title: `Hari ${peak.day} paling boros`,
+      title: `Hari ${peak.day} paling banyak menghabiskan uang`,
       body: `${formatIDR(peak.expense)} atau ${Math.round((peak.expense / weekTotal) * 100)}% pengeluaran bulan ini jatuh di hari itu.`,
       tone: "neutral",
       weight: 40,
@@ -187,7 +187,7 @@ export function buildInsights({
     out.push({
       id: "small-leaks",
       title: `Bocor halus ${formatIDR(smallTotal)}`,
-      body: `${smallTx.length} transaksi kecil (≤ ${formatIDR(25_000)}) menumpuk jadi ${pct(smallTotal, t.expense)}% pengeluaran.`,
+      body: `${smallTx.length} transaksi kecil (≤ ${formatIDR(25_000)}) meterkumpul jadi ${pct(smallTotal, t.expense)}% pengeluaran.`,
       tone: "warning",
       weight: 55,
     });

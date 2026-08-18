@@ -113,7 +113,7 @@ export default function NotificationsPage() {
           <EmptyState
             icon={BellOff}
             title="Belum ada notifikasi"
-            description="Peringatan budget, pengingat tagihan, dan status sinkronisasi muncul di sini."
+            description="Peringatan budget, pengingat tagihan, dan status sinkron muncul di sini."
           />
         )}
       </Card>

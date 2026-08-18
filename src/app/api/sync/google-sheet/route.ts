@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   const cfg = config();
   if (!cfg) {
     return NextResponse.json(
-      { connected: false, error: "Kredensial Google Sheets belum diset" },
+      { connected: false, error: "Kredensial Google Sheets belum diatur" },
       { status: 501 },
     );
   }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
   const cfg = config();
   if (!cfg) {
     return NextResponse.json(
-      { error: "Kredensial Google Sheets belum diset", fallback: "manual" },
+      { error: "Kredensial Google Sheets belum diatur", fallback: "manual" },
       { status: 501 },
     );
   }
@@ -189,7 +189,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Sinkronisasi gagal" },
+      { error: err instanceof Error ? err.message : "Sinkron gagal" },
       { status: 502 },
     );
   }

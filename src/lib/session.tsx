@@ -7,10 +7,12 @@ import { hashPin, newId, nowISO } from "./utils";
 import { isSupabaseConfigured, supabaseBrowser } from "./supabase";
 import { fetchCloudProfile, onProfileSynced, syncSupabase } from "./sync/supabase-sync";
 import { syncQuotaFromUser } from "./subscription";
+import { shouldResetForLocalSignIn, shouldResetForSupabaseSignIn } from "./session-account";
 
 const PROFILE_ID = "me";
 const UNLOCK_KEY = "td.unlocked";
-const UNLOCK_TIMEOUT = 15 * 60 * 1000; // 15 minutes auto-lock
+const UNLOCK_TIMEOUT = 15 * 60 * 1000; // 15 minutes otomatis-lock
+const LOCAL_ACCOUNT_KEY = "td.local_account_key";
 
 // Simple obfuscation untuk unlock state (bukan enkripsi penuh, tapi lebih baik dari plain "1")
 function createUnlockToken(): string {
@@ -92,15 +94,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signInLocal = React.useCallback(
     async (name: string, pin?: string) => {
       const existing = await db().profile.get(PROFILE_ID);
+      const accountKey = `local:${(name.trim() || "pengguna").toLowerCase()}`;
+      const shouldReset = shouldResetForLocalSignIn({
+        currentSupabaseUserId: existing?.supabase_user_id,
+        previousLocalAccountKey:
+          localStorage.getItem(LOCAL_ACCOUNT_KEY)
+          ?? (existing && !existing.supabase_user_id ? `local:${existing.name.trim().toLowerCase()}` : undefined),
+        nextLocalAccountKey: accountKey,
+      });
+      if (shouldReset) await resetAll();
+      const current = shouldReset ? undefined : existing;
       const row: UserProfile = {
         id: PROFILE_ID,
         name: name.trim() || "Pengguna",
-        avatar_color: existing?.avatar_color ?? "#0f9d76",
-        created_at: existing?.created_at ?? nowISO(),
-        email: existing?.email,
-        supabase_user_id: existing?.supabase_user_id,
+        avatar_color: current?.avatar_color ?? "#0f9d76",
+        created_at: current?.created_at ?? nowISO(),
+        email: current?.email,
+        supabase_user_id: undefined,
         pin_hash: pin ? await hashPin(pin) : undefined,
       };
+      localStorage.setItem(LOCAL_ACCOUNT_KEY, accountKey);
       await db().profile.put(row);
       await seedIfEmpty();
       sessionStorage.setItem(UNLOCK_KEY, createUnlockToken());
@@ -113,7 +126,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signInSupabase = React.useCallback(
     async (email: string, password: string, mode: "login" | "register") => {
       const sb = supabaseBrowser();
-      if (!sb) throw new Error("Supabase belum dikonfigurasi");
+      if (!sb) throw new Error("Supabase belum diatur");
       const { data, error } =
         mode === "login"
           ? await sb.auth.signInWithPassword({ email, password })
@@ -128,22 +141,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
       const uid = data.user?.id ?? newId();
       const existing = await db().profile.get(PROFILE_ID);
-      // JANGAN wipe data lokal saat login. Re-login ke akun yang sama (sesi expired)
-      // harusnya merge via sync, bukan reset — kalau reset, data yang belum sempat
-      // ter-push (mis. kolom baru yang belum ada di remote) bakal hilang selamanya.
-      // Wipe hanya boleh saat GANTI akun cloud (uid berbeda).
-      if (existing?.supabase_user_id && existing.supabase_user_id !== uid) {
-        await resetAll();
-      }
+      // Re-login ke akun cloud yang sama mempertahankan cache lokal agar data
+      // offline yang belum sempat tersinkron tidak hilang. Cache dibersihkan
+      // sebelum akun cloud berbeda mengambil alih, termasuk saat sebelumnya
+      // browser dipakai oleh akun lokal.
+      const shouldReset = shouldResetForSupabaseSignIn({
+        currentSupabaseUserId: existing?.supabase_user_id,
+        nextSupabaseUserId: uid,
+        hasExistingProfile: Boolean(existing),
+      });
+      if (shouldReset) await resetAll();
+      const current = shouldReset ? undefined : existing;
       const row: UserProfile = {
         id: PROFILE_ID,
-        name: existing?.name ?? email.split("@")[0],
+        name: current?.name ?? email.split("@")[0],
         email,
-        avatar_color: existing?.avatar_color ?? "#0f9d76",
-        created_at: existing?.created_at ?? nowISO(),
-        pin_hash: existing?.pin_hash,
+        avatar_color: current?.avatar_color ?? "#0f9d76",
+        created_at: current?.created_at ?? nowISO(),
+        pin_hash: current?.pin_hash,
         supabase_user_id: uid,
       };
+      localStorage.removeItem(LOCAL_ACCOUNT_KEY);
       await db().profile.put(row);
 
       if (data.user) {
@@ -155,7 +173,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           await syncSupabase({ silent: true });
         } catch (e) {
-          console.error("Gagal menarik data awal pasca login:", e);
+          console.error("Gagal mengambil data awal setelah masuk:", e);
         }
       }
 
@@ -248,8 +266,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // sempat sync (prevMs = 0) → edit lokal tetap di-push (LWW normal).
             if (prevMs > 0 && cloudMs > prevMs && cloudProfile) {
               // Cloud lebih baru dari base lokal → adopsi versi cloud ke Dexie +
-              // session, biar edit stale di device ini gak nge-overwrite nama/
-              // avatar yang diedit di device lain (dan sync berikutnya gak
+              // session, biar edit stale di device ini nggak nge-overwrite nama/
+              // avatar yang diedit di device lain (dan sync berikutnya nggak
               // nge-push ulang versi lokal yang sudah kalah).
               const adopted: UserProfile = {
                 ...next,
@@ -265,7 +283,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             if (cloudMs <= prevMs) {
               // avatar_url fallback ke cloud: edit nama aja jangan null-kan
               // avatar yang di-upload di device lain. Key di-omit kalau kolom
-              // belum ada di remote (schema legacy) biar PostgREST gak error.
+              // belum ada di remote (schema legacy) biar PostgREST nggak error.
               const payload: Record<string, unknown> = {
                 id: next.supabase_user_id,
                 name: next.name,
@@ -277,7 +295,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               await sb.from("profiles").upsert(payload, { onConflict: "id" });
             }
           } catch (e) {
-            console.error("Gagal push profil ke cloud:", e);
+            console.error("Gagal mengirim profil ke cloud:", e);
           }
         }
       }

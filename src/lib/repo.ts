@@ -14,6 +14,7 @@ import type {
   Transaction,
   Wallet,
 } from "./types";
+import { getBillPaymentTransactionId } from "./bill-metrics";
 import { newId, nowISO, toDateKey } from "./utils";
 
 type NewRow<T> = Omit<T, "id" | "created_at" | "updated_at" | "deleted"> &
@@ -311,7 +312,7 @@ async function checkBudgetAlerts(tx: Transaction) {
   const cat = await d.categories.get(budget.category_id);
   const over = ratio >= 1;
   await pushNotification({
-    title: over ? `Budget ${cat?.name ?? ""} terlampaui` : `Budget ${cat?.name ?? ""} hampir habis`,
+    title: over ? `Budget ${cat?.name ?? ""} terlampaui` : `Budget ${cat?.name ?? ""} hampir menyentuh batas`,
     body: over
       ? `Pengeluaran bulan ini ${Math.round(ratio * 100)}% dari budget.`
       : `Sudah terpakai ${Math.round(ratio * 100)}% dari budget bulan ini.`,
@@ -406,15 +407,19 @@ export async function payBill(billId: ID, walletId?: ID) {
     const bill = await db().bills.get(billId);
     if (!bill) return;
 
+    const paymentDate = toDateKey();
+    if (bill.last_paid_at?.slice(0, 10) === paymentDate) return;
+
     const actualAmount = bill.is_installment ? (bill.installment_amount_per_period ?? bill.amount) : bill.amount;
 
     if (bill.auto_create_tx && (walletId || bill.wallet_id)) {
       await createTransaction({
+        id: getBillPaymentTransactionId(bill.id, paymentDate),
         type: "expense",
         amount: actualAmount,
         wallet_id: (walletId ?? bill.wallet_id)!,
         category_id: bill.category_id,
-        date: toDateKey(),
+        date: paymentDate,
         note: bill.is_installment 
           ? `Bayar cicilan: ${bill.name} (Ke-${(bill.installment_paid ?? 0) + 1} dari ${bill.installment_total ?? 1})`
           : `Bayar tagihan: ${bill.name}`,
@@ -625,7 +630,7 @@ export async function runBillReminderScan(): Promise<number> {
     const marker = `${bill.id}:${bill.due_date}`;
     if (existing.some((n) => n.ref_id === marker)) continue;
     await pushNotification({
-      title: daysLeft < 0 ? `Tagihan telat: ${bill.name}` : `Tagihan jatuh tempo: ${bill.name}`,
+      title: daysLeft < 0 ? `Tagihan terlambat: ${bill.name}` : `Tagihan jatuh tempo: ${bill.name}`,
       body:
         daysLeft < 0
           ? `Lewat ${Math.abs(daysLeft)} hari dari jatuh tempo.`

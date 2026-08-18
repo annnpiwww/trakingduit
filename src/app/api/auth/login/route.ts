@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured, supabaseServerClient } from "@/lib/supabase";
+import { checkPersistentRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,14 @@ const Body = z.object({
   mode: z.enum(["login", "register"]).default("login"),
 });
 
+function getClientIdentifier(request: Request): string {
+  const directIp = request.headers.get("x-real-ip")?.trim();
+  if (directIp) return directIp;
+
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwardedFor || "unknown";
+}
+
 /**
  * POST /auth/login — email + password auth against Supabase.
  * The web app signs in directly from the browser; this endpoint exists so other
@@ -18,7 +27,7 @@ const Body = z.object({
 export async function POST(request: Request) {
   if (!isSupabaseConfigured) {
     return NextResponse.json(
-      { error: "Supabase belum dikonfigurasi - aplikasi berjalan mode lokal" },
+      { error: "Supabase belum diatur - aplikasi berjalan mode lokal" },
       { status: 501 },
     );
   }
@@ -42,6 +51,27 @@ export async function POST(request: Request) {
   if (!sb) return NextResponse.json({ error: "Supabase client gagal dibuat" }, { status: 500 });
 
   const { email, password, mode } = parsed.data;
+
+  if (mode === "login") {
+    const limiter = await checkPersistentRateLimit({
+      key: `login:${getClientIdentifier(request)}:${email.toLowerCase()}`,
+      maxRequests: 5,
+      windowMs: 5 * 60 * 1000,
+    });
+    if (!limiter.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan login. Coba lagi beberapa menit lagi ya." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limiter.retryAfterSeconds),
+            "X-RateLimit-Remaining": String(limiter.remaining),
+          },
+        },
+      );
+    }
+  }
+
   const { data, error } =
     mode === "login"
       ? await sb.auth.signInWithPassword({ email, password })

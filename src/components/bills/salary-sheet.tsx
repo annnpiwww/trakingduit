@@ -11,9 +11,13 @@ interface SalarySheetProps {
 }
 
 export function SalarySheet({ open, onClose, month, initialAmount }: SalarySheetProps) {
-  const [amount, setAmount] = React.useState(
-    initialAmount ? new Intl.NumberFormat("id-ID").format(initialAmount) : ""
-  );
+  const [amount, setAmount] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setAmount(initialAmount ? new Intl.NumberFormat("id-ID").format(initialAmount) : "");
+  }, [open, initialAmount]);
 
   return (
     <Sheet
@@ -24,9 +28,17 @@ export function SalarySheet({ open, onClose, month, initialAmount }: SalarySheet
         <Button
           className="w-full"
           size="lg"
+          loading={saving}
+          disabled={saving || !amount}
           onClick={async () => {
-            await upsertSalary(month, Number(amount.replace(/\D/g, "")));
-            onClose();
+            if (saving) return;
+            setSaving(true);
+            try {
+              await upsertSalary(month, Number(amount.replace(/\D/g, "")));
+              onClose();
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           Simpan

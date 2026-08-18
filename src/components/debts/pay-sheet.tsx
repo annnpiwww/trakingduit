@@ -22,6 +22,7 @@ export function PaySheet({
   const isPayable = debt?.type === "payable";
   const [amount, setAmount] = React.useState("");
   const [walletId, setWalletId] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
@@ -30,15 +31,20 @@ export function PaySheet({
   }, [open, debt, remaining, wallets]);
 
   async function submit() {
-    if (!debt) return;
+    if (!debt || saving) return;
     const value = parseAmount(amount);
     if (value <= 0) return;
-    await payDebt(debt.id, value, walletId || undefined);
-    toast(
-      isPayable ? `Bayar utang ${debt.person} dicatat` : `Terima piutang dari ${debt.person} dicatat`,
-      "success",
-    );
-    onClose();
+    setSaving(true);
+    try {
+      await payDebt(debt.id, value, walletId || undefined);
+      toast(
+        isPayable ? `Bayar utang ${debt.person} dicatat` : `Terima piutang dari ${debt.person} dicatat`,
+        "success",
+      );
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -55,7 +61,8 @@ export function PaySheet({
             size="lg"
             className={cn("flex-1", isPayable ? "bg-expense text-expense-fg hover:brightness-110" : "")}
             onClick={submit}
-            disabled={parseAmount(amount) <= 0}
+            loading={saving}
+            disabled={saving || parseAmount(amount) <= 0}
           >
             {parseAmount(amount) >= remaining ? "Lunas" : isPayable ? "Bayar" : "Terima"}
           </Button>

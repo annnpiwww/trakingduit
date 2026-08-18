@@ -29,7 +29,7 @@ export interface SupabaseSyncResult {
 }
 
 export interface SupabaseSyncOptions {
-  /** Background runs skip the in-app notification so auto-sync tidak spam. */
+  /** Background runs skip the in-app notification so otomatis-sync tidak spam. */
   silent?: boolean;
 }
 
@@ -232,7 +232,7 @@ async function pullCategory(row: { id: string; is_default?: number; updated_at?:
 
 export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<SupabaseSyncResult> {
   const sb = supabaseBrowser();
-  if (!sb) throw new Error("Supabase belum dikonfigurasi");
+  if (!sb) throw new Error("Supabase belum diatur");
 
   const { data: auth } = await sb.auth.getUser();
   const userId = auth.user?.id;
@@ -318,7 +318,7 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
             avatar_color: localProfile.avatar_color,
             email: localProfile.email ?? cloudProfile?.email ?? null,
             // undefined → key di-omit saat JSON.stringify, jadi kolom legacy
-            // yang belum ada avatar_url gak bikin PostgREST error.
+            // yang belum ada avatar_url nggak bikin PostgREST error.
             avatar_url: hasAvatarUrl
               ? (localProfile.avatar_url ?? cloudProfile?.avatar_url ?? null)
               : undefined,
@@ -367,7 +367,7 @@ export async function syncSupabase(options: SupabaseSyncOptions = {}): Promise<S
     }
     return { pushed, pulled, at: startedAt };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Sinkronisasi gagal";
+    const message = err instanceof Error ? err.message : "Sinkron gagal";
     await logSync({
       target: "supabase",
       direction: "two-way",

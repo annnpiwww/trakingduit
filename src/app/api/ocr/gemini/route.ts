@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const geminiKey = process.env.GEMINI_API_KEY;
   if ((!ocrApiUrl || !ocrApiKey) && !geminiKey) {
     return NextResponse.json(
-      { error: "OCR_API_URL/OCR_API_KEY atau GEMINI_API_KEY belum diset", fallback: "vision" },
+      { error: "OCR_API_URL/OCR_API_KEY atau GEMINI_API_KEY belum diatur", fallback: "vision" },
       { status: 501 },
     );
   }

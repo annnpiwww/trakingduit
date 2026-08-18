@@ -14,6 +14,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "public/sw.js",
+    ".agents/**",
+    "docs/**",
+    "tests/**",
+    "supabase/**",
+    "scripts/**",
+    "test-supabase.js",
+    "vitest.config.ts",
   ]),
   {
     plugins: {

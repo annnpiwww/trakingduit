@@ -295,7 +295,9 @@ create trigger on_auth_user_created
 
 -- --------------------------------------------------------------- balance view
 -- initial_balance + income − expense + transfers in − transfers out
-create or replace view wallet_balances as
+create or replace view wallet_balances
+with (security_invoker = true)
+as
 select
   w.id as wallet_id,
   w.user_id,
@@ -304,13 +306,24 @@ select
     + coalesce(sum(case when t.type = 'income' then t.amount else 0 end), 0)
     - coalesce(sum(case when t.type in ('expense', 'transfer') then t.amount else 0 end), 0)
     + coalesce(
-        (select sum(amount) from transactions
-         where to_wallet_id = w.id and type = 'transfer' and deleted = 0), 0)
+        (select sum(incoming.amount) from transactions incoming
+         where incoming.to_wallet_id = w.id
+           and incoming.type = 'transfer'
+           and incoming.deleted = 0
+           and incoming.user_id = (select auth.uid())), 0)
     as balance
 from wallets w
-left join transactions t on t.wallet_id = w.id and t.deleted = 0
+left join transactions t
+  on t.wallet_id = w.id
+  and t.deleted = 0
+  and t.user_id = (select auth.uid())
 where w.deleted = 0
+  and w.user_id = (select auth.uid())
 group by w.id, w.user_id, w.name, w.initial_balance;
+
+revoke all on table wallet_balances from anon;
+revoke all on table wallet_balances from authenticated;
+grant select on table wallet_balances to authenticated;
 
 -- ------------------------------------------------------------- receipt storage
 insert into storage.buckets (id, name, public)
@@ -322,3 +335,68 @@ create policy "own receipt files" on storage.objects
   for all
   using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ------------------------------------------------------------- persistent API rate limiting
+create table if not exists rate_limit_buckets (
+  key text primary key,
+  window_started_at timestamptz not null,
+  request_count integer not null default 0,
+  constraint rate_limit_buckets_key_length check (char_length(key) between 1 and 255),
+  constraint rate_limit_buckets_count_nonnegative check (request_count >= 0)
+);
+
+revoke all on table rate_limit_buckets from anon, authenticated;
+grant all on table rate_limit_buckets to service_role;
+
+create or replace function consume_rate_limit(
+  p_key text,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns table (allowed boolean, remaining integer, retry_after_seconds integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_row rate_limit_buckets%rowtype;
+  v_reset_at timestamptz;
+begin
+  if p_key is null or char_length(p_key) = 0 or char_length(p_key) > 255 then
+    raise exception 'invalid rate limit key';
+  end if;
+  if p_limit is null or p_limit < 1 then
+    raise exception 'invalid rate limit';
+  end if;
+  if p_window_seconds is null or p_window_seconds < 1 then
+    raise exception 'invalid rate limit window';
+  end if;
+
+  insert into rate_limit_buckets (key, window_started_at, request_count)
+  values (p_key, v_now, 1)
+  on conflict (key) do update
+  set
+    window_started_at = case
+      when rate_limit_buckets.window_started_at + make_interval(secs => p_window_seconds) <= v_now then v_now
+      else rate_limit_buckets.window_started_at
+    end,
+    request_count = case
+      when rate_limit_buckets.window_started_at + make_interval(secs => p_window_seconds) <= v_now then 1
+      when rate_limit_buckets.request_count < p_limit then rate_limit_buckets.request_count + 1
+      else rate_limit_buckets.request_count
+    end
+  returning * into v_row;
+
+  v_reset_at := v_row.window_started_at + make_interval(secs => p_window_seconds);
+
+  return query
+  select
+    v_row.request_count <= p_limit,
+    greatest(0, p_limit - v_row.request_count),
+    greatest(1, ceil(extract(epoch from (v_reset_at - v_now)))::integer);
+end;
+$$;
+
+revoke all on function consume_rate_limit(text, integer, integer) from public, anon, authenticated;
+grant execute on function consume_rate_limit(text, integer, integer) to service_role;

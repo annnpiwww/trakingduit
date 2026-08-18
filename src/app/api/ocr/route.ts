@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ocrRequestSchema, createErrorResponse } from "@/lib/validation";
+import { checkPersistentRateLimit } from "@/lib/rate-limit";
 import { ocrViaOpenAI, parseOcrText, ocrViaGemini } from "@/lib/ocr/prompt";
 import type { AiOcrResponse } from "@/lib/ocr/prompt";
 
@@ -12,6 +13,16 @@ const OCR_URL = process.env.OCR_API_URL;
 const OCR_API_KEY = process.env.OCR_API_KEY;
 const OCR_MODEL = process.env.OCR_MODEL ?? "ollama-cloud/gemma4:31b";
 // Chain cadangan, koma-pisah, dicoba berurutan kalau model utama gagal/rate-limit.
+function getErrorCause(error: Error): string {
+  const cause = error.cause;
+  if (cause instanceof Error) return cause.message;
+  if (typeof cause === "object" && cause !== null) {
+    if ("code" in cause && typeof cause.code === "string") return cause.code;
+    if ("message" in cause && typeof cause.message === "string") return cause.message;
+  }
+  return typeof cause === "string" ? cause : "";
+}
+
 const OCR_FALLBACK_MODELS = (
   process.env.OCR_FALLBACK_MODELS ?? "ocrgambar-copy,auto/best-vision,antigravity/gemini-3.6-flash-high"
 )
@@ -49,6 +60,28 @@ export async function POST(request: Request) {
       );
     }
 
+    const clientIdentifier = request.headers.get("x-real-ip")?.trim()
+      || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || "unknown";
+    const rateLimit = await checkPersistentRateLimit({
+      key: `ocr:${clientIdentifier}`,
+      maxRequests: 60,
+      windowMs: 60_000,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak scan struk. Coba lagi sebentar ya." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+            "X-RateLimit-Remaining": String(rateLimit.remaining),
+          },
+        },
+      );
+    }
+
     image = validated.data.image;
   } catch {
     return NextResponse.json(createErrorResponse("Body JSON tidak valid"), { status: 400 });
@@ -56,7 +89,7 @@ export async function POST(request: Request) {
   if (!image) return NextResponse.json(createErrorResponse("Field 'image' wajib diisi"), { status: 400 });
   if (!OCR_URL || !OCR_API_KEY) {
     return NextResponse.json(
-      { ...createErrorResponse("OCR_API_URL/OCR_API_KEY belum diset"), fallback: "tesseract" },
+      { ...createErrorResponse("OCR_API_URL/OCR_API_KEY belum diatur"), fallback: "tesseract" },
       { status: 501 },
     );
   }
@@ -80,7 +113,7 @@ export async function POST(request: Request) {
       errors.push(`${model}: teks kosong`);
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
-      const cause = (e as any).cause?.code ?? (e as any).cause?.message ?? "";
+      const cause = getErrorCause(e);
       errors.push(`${model}: ${e.message}${cause ? ` (${cause})` : ""}`);
       console.error(`OCR model ${model} gagal:`, e.message, "| cause:", cause);
     }
