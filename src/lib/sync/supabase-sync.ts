@@ -44,7 +44,7 @@ export interface SupabaseSyncOptions {
 const REMOTE_COLUMNS: Record<string, readonly string[]> = {
   wallets: [
     "id", "user_id", "name", "type", "initial_balance", "currency", "color",
-    "icon", "note", "archived", "order", "created_at", "updated_at", "deleted",
+    "icon", "note", "archived", "order", "auto_app_identifier", "created_at", "updated_at", "deleted",
   ],
   categories: [
     "id", "user_id", "name", "type", "icon", "color", "is_default", "keywords",

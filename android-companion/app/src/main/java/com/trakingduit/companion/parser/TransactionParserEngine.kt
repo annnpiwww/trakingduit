@@ -32,28 +32,44 @@ interface NotificationParser {
 class TransactionParserEngine : NotificationParser {
 
     val rules = listOf(
-        // BRImo QRIS Expense Rule
-        ParserRule(
-            packageNames = setOf("id.co.bri.brimo"),
-            type = "expense",
-            regex = Pattern.compile("(?i)(?:Notifikasi\\s+Transaksi\\s+)?QRIS\\s+di\\s+(?<merchant>.+?)\\s+sebesar\\s+Rp\\s*(?<amount>[\\d\\.,]+)"),
-            merchantGroup = "merchant",
-            amountGroup = "amount"
-        ),
-        // BRImo Transfer Expense Rule
-        ParserRule(
-            packageNames = setOf("id.co.bri.brimo"),
-            type = "expense",
-            regex = Pattern.compile("(?i)Transfer\\s+Sdr\\s+(?<merchant>.+?)\\s+sebesar\\s+Rp\\s*(?<amount>[\\d\\.,]+)"),
-            merchantGroup = "merchant",
-            amountGroup = "amount"
-        ),
         // BRImo Income Rule
         ParserRule(
             packageNames = setOf("id.co.bri.brimo"),
             type = "income",
-            regex = Pattern.compile("(?i)Transfer\\s+masuk\\s+sebesar\\s+Rp\\s*(?<amount>[\\d\\.,]+)\\s+dari\\s+(?<merchant>.+)"),
+            regex = Pattern.compile("(?i)transfer\\s+masuk\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)(?:\\s+dari\\s+(?<merchant>.+))?"),
             merchantGroup = "merchant",
+            amountGroup = "amount"
+        ),
+        // BRImo QRIS Expense Rule
+        ParserRule(
+            packageNames = setOf("id.co.bri.brimo"),
+            type = "expense",
+            regex = Pattern.compile("(?i)(?:Notifikasi\\s+Transaksi\\s+)?QRIS\\s+di\\s+(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
+            merchantGroup = "merchant",
+            amountGroup = "amount"
+        ),
+        // BRImo Rule 1: Transfer dengan nomor tujuan
+        ParserRule(
+            packageNames = setOf("id.co.bri.brimo"),
+            type = "expense",
+            regex = Pattern.compile("(?i)transfer\\s+(?:dari\\s+.+?\\s+)?(?:dengan|ke)?\\s*(?:nomor\\s+tujuan\\s+)?(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
+            merchantGroup = "merchant",
+            amountGroup = "amount"
+        ),
+        // BRImo Rule 2: Transfer/Pembayaran umum expense
+        ParserRule(
+            packageNames = setOf("id.co.bri.brimo"),
+            type = "expense",
+            regex = Pattern.compile("(?i)(?:transfer|pembayaran)\\s+(?:keluar|Sdr|QRIS|transaksi|ke)?\\s*(?:di|ke)?\\s*(?<merchant>.+?)\\s+sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)"),
+            merchantGroup = "merchant",
+            amountGroup = "amount"
+        ),
+        // BRImo Rule 4: Fallback BRImo amount & merchant
+        ParserRule(
+            packageNames = setOf("id.co.bri.brimo"),
+            type = "expense",
+            regex = Pattern.compile("(?i)sebesar\\s+(?:Rp\\s*)?(?<amount>[\\d\\.,]+)\\s+berhasil"),
+            merchantGroup = "",
             amountGroup = "amount"
         ),
         // BCA m-Transfer with a/n Expense Rule

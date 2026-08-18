@@ -15,6 +15,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase";
 import QrCodeGenerator from "@/components/auto-tracking/QrCodeGenerator";
 import { db } from "@/lib/db";
+import { updateWallet } from "@/lib/repo";
 import type { Wallet } from "@/lib/types";
 import { nowISO } from "@/lib/utils";
 import { Card, CardHeader, Button, Badge, Select, Field, Spinner } from "@/components/ui";
@@ -109,31 +110,30 @@ export default function AutoTrackingSettingsPage() {
       const d = db();
       const prevWallet = wallets.find((w) => w.auto_app_identifier === appId);
       if (prevWallet && prevWallet.id !== walletId) {
-        await d.wallets.update(prevWallet.id, {
+        await updateWallet(prevWallet.id, {
           auto_app_identifier: null,
-          updated_at: nowISO(),
         });
       }
 
       if (walletId) {
-        await d.wallets.update(walletId, {
+        await updateWallet(walletId, {
           auto_app_identifier: appId,
-          updated_at: nowISO(),
         });
       }
 
       const supabase = supabaseBrowser();
       if (supabase) {
+        const timestamp = nowISO();
         if (prevWallet && prevWallet.id !== walletId) {
           await supabase
             .from("wallets")
-            .update({ auto_app_identifier: null })
+            .update({ auto_app_identifier: null, updated_at: timestamp })
             .eq("id", prevWallet.id);
         }
         if (walletId) {
           await supabase
             .from("wallets")
-            .update({ auto_app_identifier: appId })
+            .update({ auto_app_identifier: appId, updated_at: timestamp })
             .eq("id", walletId);
         }
       }

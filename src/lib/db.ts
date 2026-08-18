@@ -199,6 +199,11 @@ export class TrackingDuitDB extends Dexie {
     this.version(7).stores({
       debts: "id, person, type, due_date, created_at, updated_at, deleted",
     });
+
+    // Version 8: add auto_app_identifier to wallets index
+    this.version(8).stores({
+      wallets: "id, name, type, archived, auto_app_identifier, updated_at, deleted",
+    });
   }
 }
 
