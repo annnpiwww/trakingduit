@@ -224,6 +224,12 @@ export async function POST(req: NextRequest) {
     const txId = crypto.randomUUID();
     const now = new Date().toISOString();
 
+    const cleanMerchant = merchant || null;
+    const cleanNote =
+      type === "income"
+        ? `Dari ${merchant || "Otomatis"}`
+        : `${merchant || "Otomatis"}`;
+
     const newTx = {
       id: txId,
       user_id: user.id,
@@ -232,10 +238,10 @@ export async function POST(req: NextRequest) {
       wallet_id: walletId,
       category_id: categoryId,
       date: dateStr,
-      note: `Auto-recorded from ${sourceApp}${merchant ? ` (${merchant})` : ""}`,
-      merchant: merchant || null,
+      note: cleanNote,
+      merchant: cleanMerchant,
       source: "auto_notification",
-      tags: ["auto-tracking"],
+      tags: ["auto", sourceApp],
       created_at: now,
       updated_at: now,
       deleted: 0,

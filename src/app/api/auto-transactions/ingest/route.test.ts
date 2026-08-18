@@ -151,6 +151,12 @@ describe("POST /api/auto-transactions/ingest", () => {
       error: null,
     });
 
+    const mockInsertTx = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: mockInsertTxSingle,
+      }),
+    });
+
     const mockFrom = vi.fn((table: string) => {
       if (table === "auto_transaction_logs") {
         return {
@@ -193,11 +199,7 @@ describe("POST /api/auto-transactions/ingest", () => {
       }
       if (table === "transactions") {
         return {
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: mockInsertTxSingle,
-            }),
-          }),
+          insert: mockInsertTx,
         };
       }
       return {};
@@ -233,6 +235,18 @@ describe("POST /api/auto-transactions/ingest", () => {
     expect(json.status).toBe("success");
     expect(json.transaction_id).toBe("tx-created-999");
     expect(json.wallet_id).toBe("wallet-bri-123");
+    expect(mockInsertTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: "user-123",
+        type: "expense",
+        amount: 35000,
+        wallet_id: "wallet-bri-123",
+        note: "Kopi Kenangan",
+        merchant: "Kopi Kenangan",
+        source: "auto_notification",
+        tags: ["auto", "id.co.bri.brimo"],
+      })
+    );
     expect(mockInsertLog).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: "user-123",
@@ -240,6 +254,55 @@ describe("POST /api/auto-transactions/ingest", () => {
         source_app: "id.co.bri.brimo",
         amount: 35000,
         status: "success",
+      })
+    );
+  });
+
+  it("should format income note with 'Dari <merchant>' and fallback to 'Dari Otomatis'", async () => {
+    const mockGetUser = vi.fn().mockResolvedValue({
+      data: { user: { id: "user-123", email: "test@example.com" } },
+      error: null,
+    });
+    const mockMaybeSingleLog = vi.fn().mockResolvedValue({ data: null, error: null });
+    const mockAppWalletSingle = vi.fn().mockResolvedValue({ data: { id: "wallet-bri-123" }, error: null });
+    const mockInsertTxSingle = vi.fn().mockResolvedValue({ data: { id: "tx-income-1" }, error: null });
+    const mockInsertLog = vi.fn().mockResolvedValue({ data: null, error: null });
+
+    const mockInsertTx = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ single: mockInsertTxSingle }),
+    });
+
+    const mockFrom = vi.fn((table: string) => {
+      if (table === "auto_transaction_logs") return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingleLog }) }) }), insert: mockInsertLog };
+      if (table === "wallets") return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ maybeSingle: mockAppWalletSingle }) }) }) }) }) };
+      if (table === "categories") return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [], error: null }) }) }) };
+      if (table === "transactions") return { insert: mockInsertTx };
+      return {};
+    });
+
+    vi.mocked(supabaseModule.supabaseFromRequest).mockReturnValue({ auth: { getUser: mockGetUser }, from: mockFrom } as any);
+
+    const req = new NextRequest("http://localhost:3000/api/auto-transactions/ingest", {
+      method: "POST",
+      headers: { authorization: "Bearer test-jwt-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        source_app: "com.bca",
+        amount: 500000,
+        type: "income",
+        merchant: "PT GLOBAL",
+        notification_hash: "hash-income-1",
+        transaction_timestamp: "2026-08-18T10:30:00Z",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockInsertTx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "income",
+        note: "Dari PT GLOBAL",
+        merchant: "PT GLOBAL",
+        tags: ["auto", "com.bca"],
       })
     );
   });
