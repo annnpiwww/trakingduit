@@ -305,43 +305,6 @@ export default function DashboardPage() {
       />
       </div>
 
-      {/* Safe-to-spend: the core promise of knowing what is still safe this month. */}
-      <Card className="border-brand/20 bg-brand/5 p-4">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
-            <ShieldCheck className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold tracking-tight">Aman dipakai sampai akhir bulan</p>
-              <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-brand">{isCurrentMonth ? "Live" : "Snapshot"}</span>
-            </div>
-            {isCurrentMonth ? (
-              <>
-                <p className="num mt-1 text-2xl font-bold tracking-tight text-brand">{mask(safeToSpend.total)}</p>
-                <p className="mt-1 text-xs text-muted">
-                  Batas kira-kira {mask(safeToSpend.perDay)} per hari untuk {safeToSpend.daysRemaining} hari ke depan.
-                </p>
-                <p className="mt-2 text-[11px] text-muted">
-                  {safeToSpend.confidence === "low"
-                    ? "Ini perkiraan sementara karena gaji bulan ini belum diatur."
-                    : "Perkiraan ini memakai saldo dan komitmen yang sudah kamu catat."}
-                </p>
-                {safeToSpend.reservedBills > 0 || safeToSpend.reservedGoals > 0 ? (
-                  <p className="mt-1 text-[11px] text-muted">
-                    Dicadangkan: {safeToSpend.reservedBills > 0 ? `tagihan ${mask(safeToSpend.reservedBills)}` : null}
-                    {safeToSpend.reservedBills > 0 && safeToSpend.reservedGoals > 0 ? ", " : null}
-                    {safeToSpend.reservedGoals > 0 ? `target ${mask(safeToSpend.reservedGoals)}` : null}.
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className="mt-2 text-xs text-muted">Pilih bulan berjalan untuk lihat batas aman yang paling relevan.</p>
-            )}
-          </div>
-        </div>
-      </Card>
-
       {/* Tradu AI Chat Entry */}
       <button
         data-tour="tradu"
