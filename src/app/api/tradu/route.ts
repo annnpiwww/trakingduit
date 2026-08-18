@@ -50,6 +50,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "messages array is required" }, { status: 400 });
     }
 
+    if (messages.some((m: any) => !m || !["user", "assistant"].includes(m.role))) {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
+
     const ctx = financialContext ?? {};
     const fmt = (n?: number) => (n == null ? "-" : `Rp${Math.round(n).toLocaleString("id-ID")}`);
     const pct = (n?: number) => (n == null ? "-" : `${Math.round(n * 100)}%`);

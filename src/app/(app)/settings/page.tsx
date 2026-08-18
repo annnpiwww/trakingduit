@@ -17,6 +17,7 @@ import {
   Plus,
   RefreshCcwDot,
   Save,
+  Smartphone,
   SunMoon,
   Tags,
   Trash2,
@@ -432,6 +433,29 @@ export default function SettingsPage() {
             </ul>
           </div>
         ) : null}
+      </Card>
+
+      {/* Otomatisasi */}
+      <Card>
+        <CardHeader title="Otomatisasi" subtitle="Integrasi notifikasi HP Android" />
+        <Link
+          href="/settings/auto-tracking"
+          className="flex items-center gap-3 p-4 transition-colors hover:bg-neutral-800/40"
+        >
+          <span className="grid size-10 place-items-center rounded-full bg-brand/10 text-brand">
+            <Smartphone className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Auto-Catat Transaksi (Android APK)
+              <Badge tone="brand">Baru</Badge>
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              Hubungkan aplikasi Companion Android untuk catat transaksi otomatis via SMS/Notifikasi bank
+            </p>
+          </div>
+          <ChevronRight className="size-5 text-muted" />
+        </Link>
       </Card>
 
       {/* Data */}

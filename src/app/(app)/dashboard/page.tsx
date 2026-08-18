@@ -42,7 +42,6 @@ import { MonthSwitcher } from "@/components/layout/month-switcher";
 import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { TraduChat } from "@/components/tradu/tradu-chat";
-import { AutoCompanionBanner } from "@/components/auto-tracking/AutoCompanionBanner";
 import { useAutoTransactionRealtime } from "@/lib/hooks/useAutoTransactionRealtime";
 
 type MenuTone = "brand" | "income" | "expense" | "warn" | "accent";
@@ -274,9 +273,6 @@ export default function DashboardPage() {
           <MonthSwitcher value={month} onChange={setMonth} />
         </div>
       </div>
-
-      {/* Auto-Tracking Android Companion Promo Banner */}
-      <AutoCompanionBanner />
 
       {/* Balance hero */}
       <div data-tour="balance">
