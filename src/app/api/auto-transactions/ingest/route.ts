@@ -112,18 +112,26 @@ export async function POST(req: NextRequest) {
 
     // 2. Wallet resolution: Look up wallet matching auto_app_identifier, or fallback to user's first wallet
     let walletId: string | null = null;
-    const { data: appWallet } = await supabase
-      .from("wallets")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("auto_app_identifier", sourceApp)
-      .eq("deleted", 0)
-      .limit(1)
-      .maybeSingle();
+    try {
+      const { data: appWallet, error: appWalletError } = await supabase
+        .from("wallets")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("auto_app_identifier", sourceApp)
+        .eq("deleted", 0)
+        .limit(1)
+        .maybeSingle();
 
-    if (appWallet) {
-      walletId = appWallet.id;
-    } else {
+      if (!appWalletError && appWallet) {
+        walletId = appWallet.id;
+      } else if (appWalletError) {
+        console.warn("Wallet lookup by auto_app_identifier failed, falling back to default wallet:", appWalletError.message);
+      }
+    } catch (err) {
+      console.warn("Exception querying auto_app_identifier on wallets table, falling back to default wallet:", err);
+    }
+
+    if (!walletId) {
       const { data: fallbackWallet } = await supabase
         .from("wallets")
         .select("id")

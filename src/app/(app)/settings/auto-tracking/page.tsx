@@ -18,7 +18,7 @@ import { db } from "@/lib/db";
 import { updateWallet } from "@/lib/repo";
 import type { Wallet } from "@/lib/types";
 import { nowISO } from "@/lib/utils";
-import { Card, CardHeader, Button, Badge, Select, Field, Spinner } from "@/components/ui";
+import { Card, CardHeader, Button, Badge, Select, Field, Spinner, useToast } from "@/components/ui";
 
 const KNOWN_APPS = [
   { id: "id.co.bri.brimo", name: "BRImo", label: "Bank BRI (BRImo)", iconBg: "bg-blue-500/10 text-blue-400" },
@@ -27,6 +27,7 @@ const KNOWN_APPS = [
 ];
 
 export default function AutoTrackingSettingsPage() {
+  const toast = useToast();
   const [pairingPayload, setPairingPayload] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -124,17 +125,31 @@ export default function AutoTrackingSettingsPage() {
       const supabase = supabaseBrowser();
       if (supabase) {
         const timestamp = nowISO();
-        if (prevWallet && prevWallet.id !== walletId) {
-          await supabase
-            .from("wallets")
-            .update({ auto_app_identifier: null, updated_at: timestamp })
-            .eq("id", prevWallet.id);
-        }
-        if (walletId) {
-          await supabase
-            .from("wallets")
-            .update({ auto_app_identifier: appId, updated_at: timestamp })
-            .eq("id", walletId);
+        try {
+          if (prevWallet && prevWallet.id !== walletId) {
+            const { error: err1 } = await supabase
+              .from("wallets")
+              .update({ auto_app_identifier: null, updated_at: timestamp })
+              .eq("id", prevWallet.id);
+            if (err1) {
+              console.error("Supabase error clearing auto_app_identifier:", err1);
+              toast(`Gagal sync cloud wallet: ${err1.message}`, "error");
+            }
+          }
+          if (walletId) {
+            const { error: err2 } = await supabase
+              .from("wallets")
+              .update({ auto_app_identifier: appId, updated_at: timestamp })
+              .eq("id", walletId);
+            if (err2) {
+              console.error("Supabase error setting auto_app_identifier:", err2);
+              toast(`Gagal sync cloud wallet: ${err2.message}`, "error");
+            }
+          }
+        } catch (supabaseErr) {
+          console.error("Supabase API exception during wallet update:", supabaseErr);
+          const msg = supabaseErr instanceof Error ? supabaseErr.message : "Terjadi kesalahan pada Supabase";
+          toast(`Gagal sync cloud wallet: ${msg}`, "error");
         }
       }
 
@@ -145,6 +160,8 @@ export default function AutoTrackingSettingsPage() {
       setTimeout(() => setSaveSuccess(null), 2500);
     } catch (err) {
       console.error("Failed to update wallet mapping:", err);
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan saat menyimpan wallet mapping";
+      toast(`Gagal menyimpan mapping: ${msg}`, "error");
     } finally {
       setSavingApp(null);
     }
