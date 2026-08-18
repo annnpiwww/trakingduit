@@ -32,12 +32,15 @@ import {
   EmptyState,
   MenuTile,
   Skeleton,
+  useToast,
 } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { MonthSwitcher } from "@/components/layout/month-switcher";
 import { TransactionList } from "@/components/transactions/transaction-list";
 import { TransactionSheet } from "@/components/transactions/transaction-sheet";
 import { TraduChat } from "@/components/tradu/tradu-chat";
+import { AutoCompanionBanner } from "@/components/auto-tracking/AutoCompanionBanner";
+import { useAutoTransactionRealtime } from "@/lib/hooks/useAutoTransactionRealtime";
 
 type MenuTone = "brand" | "income" | "expense" | "warn" | "accent";
 
@@ -92,6 +95,23 @@ const QUICK: {
 
 export default function DashboardPage() {
   const { profile } = useSession();
+  const showToast = useToast();
+
+  useAutoTransactionRealtime(profile?.id);
+
+  React.useEffect(() => {
+    const handleAutoTxToast = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { title, description } = customEvent.detail || {};
+      if (description) {
+        showToast(`${title}: ${description}`, "success");
+      }
+    };
+    window.addEventListener("auto-transaction-toast", handleAutoTxToast);
+    return () => {
+      window.removeEventListener("auto-transaction-toast", handleAutoTxToast);
+    };
+  }, [showToast]);
   const [month, setMonth] = React.useState(toMonthKey());
   const [hideBalance, setHideBalance] = React.useState(false);
   const [editing, setEditing] = React.useState<Transaction | null>(null);
@@ -209,6 +229,9 @@ export default function DashboardPage() {
           <MonthSwitcher value={month} onChange={setMonth} />
         </div>
       </div>
+
+      {/* Auto-Tracking Android Companion Promo Banner */}
+      <AutoCompanionBanner />
 
       {/* Balance hero */}
       <div data-tour="balance">

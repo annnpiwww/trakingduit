@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+GRADLE_BIN=""
+if [ -f "$HOME/.gradle/wrapper/dists/gradle-8.14-all/c2qonpi39x1mddn7hk5gh9iqj/gradle-8.14/bin/gradle" ]; then
+  GRADLE_BIN="$HOME/.gradle/wrapper/dists/gradle-8.14-all/c2qonpi39x1mddn7hk5gh9iqj/gradle-8.14/bin/gradle"
+elif command -v gradle >/dev/null 2>&1; then
+  GRADLE_BIN="gradle"
+else
+  echo "Gradle not found" >&2
+  exit 1
+fi
+
+exec "$GRADLE_BIN" "$@"

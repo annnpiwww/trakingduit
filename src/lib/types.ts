@@ -27,6 +27,7 @@ export interface Wallet extends Syncable {
   note?: string;
   archived: 0 | 1;
   order: number;
+  auto_app_identifier?: string | null;
 }
 
 export interface Category extends Syncable {

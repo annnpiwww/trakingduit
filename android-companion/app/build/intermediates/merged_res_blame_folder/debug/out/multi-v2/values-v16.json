@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.trakingduit.companion.app-mergeDebugResources-39:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/home/annnpii/.gradle/caches/8.14/transforms/18959f5f27eed71da73f12fd1b98fa74/transformed/appcompat-1.6.1/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    }
+                }
+            ]
+        }
+    ]
+}
