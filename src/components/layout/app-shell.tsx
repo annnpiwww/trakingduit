@@ -28,12 +28,10 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/session";
 import { useTheme } from "@/lib/theme";
 import { db } from "@/lib/db";
-import { RedWhiteRibbonSVG, WavingFlagSVG, BuntingFlagsSVG } from "@/components/ui/indonesia-decorations";
 import { runBillReminderScan } from "@/lib/repo";
 import dynamic from "next/dynamic";
 import { Button, Spinner } from "@/components/ui";
 import { OnboardingTutorial } from "@/components/onboarding/tutorial";
-import { PromoMerdekaModal } from "@/components/promo/promo-merdeka-modal";
 
 // Lazy-load: hanya dimuat saat benar-benar dibutuhkan (sheet dibuka / layar terkunci).
 const TransactionSheet = dynamic(
@@ -172,14 +170,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <TransactionSheet open={addOpen} onClose={() => setAddOpen(false)} />
       <OnboardingTutorial />
-      <PromoMerdekaModal />
     </div>
   );
 }
 
 function BrandMark() {
   return (
-    <span className="relative grid size-9 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-red-600 to-red-700 ring-1.5 ring-red-500/40">
+    <span className="relative grid size-9 place-items-center overflow-hidden rounded-xl bg-brand text-brand-fg shadow-xs">
       <Image
         src="/icons/logo.png"
         alt="TrakingDuit"
@@ -187,9 +184,6 @@ function BrandMark() {
         height={1254}
         className="size-full object-cover"
       />
-      <span className="absolute -bottom-1 -right-0.5 select-none text-[10px] drop-shadow-sm" title="Merdeka! 🇮🇩">
-        🇮🇩
-      </span>
     </span>
   );
 }
@@ -266,15 +260,12 @@ function TopBar({ unread }: { unread: number }) {
   const characters = React.useMemo(() => title.split(""), [title]);
 
   return (
-    <header className="sticky top-0 z-30 overflow-hidden border-b border-red-500/30 bg-gradient-to-r from-red-600/5 via-white/5 to-red-600/5 backdrop-blur-md">
-      {/* Border garis Merah-Putih gantung + bunting flags di paling atas header */}
-      <div className="absolute top-0 inset-x-0 h-0.5 bg-gradient-to-r from-red-600 via-white to-red-600 opacity-90" />
-      <BuntingFlagsSVG className="pointer-events-none absolute top-0 inset-x-0 w-full h-3.5 opacity-65" />
+    <header className="sticky top-0 z-30 border-b border-border bg-surface/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 lg:px-8">
         <Link href="/dashboard" className="flex items-center gap-2 lg:hidden">
           <BrandMark />
         </Link>
-        <h1 className="flex flex-1 items-center gap-2 truncate text-base font-semibold lg:text-lg">
+        <h1 className="flex-1 truncate text-base font-semibold lg:text-lg">
           <AnimatePresence mode="wait" initial={false}>
             {shouldReduceMotion ? (
               <motion.span
@@ -308,11 +299,6 @@ function TopBar({ unread }: { unread: number }) {
               </motion.span>
             )}
           </AnimatePresence>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-red-500/30 bg-gradient-to-r from-red-600/10 via-rose-500/10 to-red-600/10 px-2.5 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 shadow-xs backdrop-blur-sm" title="Dirgahayu Republik Indonesia 🇮🇩">
-            <WavingFlagSVG className="size-4" />
-            <RedWhiteRibbonSVG className="h-4 w-auto" />
-            <span className="hidden sm:inline font-extrabold tracking-wide uppercase">HUT RI 🇮🇩</span>
-          </span>
         </h1>
         <button
           onClick={toggle}

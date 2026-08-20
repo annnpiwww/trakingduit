@@ -5,11 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSession } from "@/lib/session";
 import { Button, Field, Input, SegmentedControl, Spinner } from "@/components/ui";
-import {
-  BuntingFlagsSVG,
-  WavingFlagSVG,
-  RedWhiteRibbonSVG,
-} from "@/components/ui/indonesia-decorations";
 
 export default function LoginPage() {
   const { status, supabaseEnabled, signInLocal, signInSupabase } = useSession();
@@ -71,33 +66,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-10 bg-gradient-to-br from-red-600 via-rose-600 to-red-700">
-      {/* Background Ornaments */}
+    <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-5 py-10">
+      {/* Background radial glow */}
       <div
-        className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-red-400/25 opacity-40 blur-3xl"
+        aria-hidden
+        className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 size-96 rounded-full bg-brand/10 blur-3xl"
       />
-      <div
-        className="pointer-events-none absolute -bottom-28 -left-24 size-80 rounded-full bg-rose-500/20 opacity-30 blur-3xl"
-      />
-
-      {/* Top Banner Ribbon Accent */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 flex justify-center opacity-85">
-        <RedWhiteRibbonSVG className="h-6 w-auto" />
-      </div>
 
       <div className="relative w-full max-w-md">
-        {/* Logo + greeting & 17 Agustus Branding */}
+        {/* Logo + greeting */}
         <div className="mb-6 flex flex-col items-center text-center">
-          {/* Badge Dirgahayu / HUT RI */}
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-gradient-to-r from-red-600/30 via-rose-600/30 to-red-700/30 px-3.5 py-1 text-xs font-semibold text-white shadow-md backdrop-blur-md ring-1 ring-white/20">
-            <WavingFlagSVG className="size-4" />
-            <span className="font-extrabold text-red-200">HUT RI 🇮🇩</span>
-            <span className="text-white/40">•</span>
-            <span className="text-white/90">Dirgahayu Indonesia</span>
-          </div>
-
           <div className="flex items-center gap-3">
-            <span className="grid size-14 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-red-700 shadow-xl backdrop-blur-sm ring-2 ring-white/30">
+            <span className="grid size-14 place-items-center overflow-hidden rounded-2xl bg-brand/10 shadow-xs ring-1 ring-brand/20">
               <Image
                 src="/icons/logo.png"
                 alt="TrakingDuit"
@@ -107,27 +87,22 @@ export default function LoginPage() {
                 className="size-full object-cover"
               />
             </span>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
               TrakingDuit
             </h1>
           </div>
 
-          <p className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          <p className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
             Hai, Selamat Datang!
           </p>
-          <p className="mt-1.5 text-sm text-white/80">
+          <p className="mt-1.5 text-sm text-muted">
             Catat duit, pantau pengeluaran, wujudkan target.
           </p>
         </div>
 
-        {/* Floating card with Bunting Flags Decoration */}
-        <div className="relative overflow-hidden rounded-3xl border border-red-500/30 bg-surface p-6 shadow-(--shadow-pop) transition-all hover:border-red-500/60">
-          {/* Bunting Flags Decoration on Top of Login Card */}
-          <div className="pointer-events-none absolute top-0 left-0 right-0 z-10 overflow-hidden">
-            <BuntingFlagsSVG className="h-7 w-full" />
-          </div>
-
-          <form onSubmit={submit} className="relative z-20 pt-3 space-y-4">
+        {/* Floating card */}
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-surface p-6 shadow-(--shadow-pop)">
+          <form onSubmit={submit} className="relative z-20 space-y-4">
             <p className="text-xs text-muted">
               {supabaseEnabled
                 ? "Pake akun buat sync di semua device, atau mode offline aja."
@@ -136,7 +111,7 @@ export default function LoginPage() {
 
             {supabaseEnabled ? (
               <SegmentedControl
-                className="w-full border-red-500/30 hover:border-red-500/60"
+                className="w-full"
                 value={mode}
                 onChange={setMode}
                 options={[
@@ -156,7 +131,6 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="kamu@email.com"
                     autoComplete="email"
-                    className="border-red-500/30 hover:border-red-500/60 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </Field>
                 <Field label="Password">
@@ -168,7 +142,6 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     autoComplete={cloudMode === "login" ? "current-password" : "new-password"}
-                    className="border-red-500/30 hover:border-red-500/60 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </Field>
               </>
@@ -181,7 +154,6 @@ export default function LoginPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Nama kamu siapa?"
                     autoComplete="nickname"
-                    className="border-red-500/30 hover:border-red-500/60 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </Field>
                 <Field label="PIN 6 digit (kalo mau)" hint="Opsional - biar aman banget.">
@@ -191,7 +163,6 @@ export default function LoginPage() {
                     value={pin}
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
                     placeholder="······"
-                    className="border-red-500/30 hover:border-red-500/60 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all"
                   />
                 </Field>
               </>
@@ -206,10 +177,10 @@ export default function LoginPage() {
             <Button
               type="submit"
               size="lg"
-              className="w-full border-0 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-md shadow-red-500/20 font-bold tracking-wide"
+              className="w-full font-semibold"
               loading={busy}
             >
-              {mode === "cloud" && cloudMode === "register" ? "Daftar Akun Baru 🇮🇩" : "Masuk ke TrakingDuit 🇮🇩"}
+              {mode === "cloud" && cloudMode === "register" ? "Daftar Akun Baru" : "Masuk ke TrakingDuit"}
             </Button>
 
             {mode === "cloud" ? (
@@ -224,8 +195,8 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-white/70">
-          Data aman tersimpan di perangkat kamu. 🇮🇩 Merdeka!
+        <p className="mt-6 text-center text-xs text-muted">
+          Data aman tersimpan di perangkat kamu.
         </p>
       </div>
     </div>

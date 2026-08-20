@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { activateTier, TIERS, TIER_ORDER, useSubscription, type TierId } from "@/lib/subscription";
 import { Button, Card, Field, Input, Sheet, useToast } from "@/components/ui";
-import { BuntingFlagsSVG, WavingFlagSVG, MerdekaBadge, RedWhiteRibbonSVG } from "@/components/ui/indonesia-decorations";
 import { cn, formatIDR } from "@/lib/utils";
 
 /** Ikon benefit per tier — dipetakan dari teks supaya tiap kartu kaya visual. */
@@ -73,58 +72,6 @@ export default function PremiumPage() {
 
   return (
     <div className="space-y-5">
-      {/* Banner Highlight Promo Merdeka */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border-2 border-amber-300/60 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 p-5 text-white shadow-xl shadow-red-600/20 ring-2 ring-amber-400/20"
-      >
-        {/* Rumbai / Bunting Flag di Atas Banner */}
-        <div className="absolute top-0 inset-x-0 z-10 pointer-events-none opacity-80">
-          <BuntingFlagsSVG className="w-full h-6" />
-        </div>
-
-        <div className="pointer-events-none absolute -right-6 -bottom-6 size-40 rounded-full bg-white/10 blur-2xl" />
-        
-        <div className="relative z-20 flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-inner backdrop-blur-md">
-              <WavingFlagSVG className="size-8 drop-shadow" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <MerdekaBadge />
-                <span className="text-xs font-bold text-amber-200">Gratis 7 Hari Pro!</span>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <h3 className="text-sm font-bold sm:text-base text-white">
-                  Kode Promo:
-                </h3>
-                <span className="inline-flex items-center gap-1.5 rounded-xl border-2 border-dashed border-amber-200 bg-red-950/50 px-3 py-1 font-mono text-base font-black tracking-widest text-amber-300 shadow-inner">
-                  PROMOMEREDEKA
-                </span>
-              </div>
-              <p className="text-xs text-red-100/90">
-                Akses tanpa batas untuk fitur Tradu & Scan Struk AI selama 7 hari gratis!
-              </p>
-            </div>
-          </div>
-          
-          <Button
-            size="md"
-            onClick={() => {
-              setInitialCode("PROMOMEREDEKA");
-              setActivating("pro");
-            }}
-            className="shrink-0 font-extrabold bg-amber-400 text-red-950 shadow-lg hover:bg-amber-300 active:scale-95 border border-amber-200"
-          >
-            <Crown className="size-4.5 stroke-[2.5]" />
-            Klaim Promo
-          </Button>
-        </div>
-      </motion.div>
-
       {/* Header */}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold tracking-wide text-accent uppercase">
@@ -182,8 +129,6 @@ export default function PremiumPage() {
                 name={cfg.name}
                 tagline={cfg.tagline}
                 price={cfg.price}
-                originalPrice={cfg.originalPrice}
-                promoBadge={cfg.promoBadge}
                 highlight={cfg.highlight}
                 popular={isPopular}
                 benefits={cfg.benefits}
@@ -264,8 +209,6 @@ function PricingCard({
   name,
   tagline,
   price,
-  originalPrice,
-  promoBadge,
   highlight,
   popular,
   benefits,
@@ -276,8 +219,6 @@ function PricingCard({
   name: string;
   tagline: string;
   price: number;
-  originalPrice?: number;
-  promoBadge?: string;
   highlight?: string;
   popular?: boolean;
   benefits: string[];
@@ -329,30 +270,11 @@ function PricingCard({
 
         <p className="mb-4 text-xs text-muted">{tagline}</p>
 
-        <div className="mb-5 flex flex-col justify-end min-h-[52px]">
-          {originalPrice ? (
-            <div className="mb-0.5 flex items-center gap-1 flex-wrap">
-              <span className="line-through text-muted text-sm mr-2">
-                {formatIDR(originalPrice)}
-              </span>
-              {promoBadge ? (
-                <span className="rounded bg-red-100 dark:bg-red-950/60 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 uppercase">
-                  {promoBadge}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-          <div className="flex items-end gap-1.5">
-            <span
-              className={cn(
-                "num text-3xl font-bold tracking-tight",
-                promoBadge ? "text-red-600 dark:text-red-400 font-bold" : ""
-              )}
-            >
-              {price === 0 ? "Gratis" : formatIDR(price)}
-            </span>
-            {price > 0 ? <span className="pb-1 text-xs text-muted">/bulan</span> : null}
-          </div>
+        <div className="mb-5 flex items-end gap-1.5 min-h-[52px]">
+          <span className="num text-3xl font-bold tracking-tight">
+            {price === 0 ? "Gratis" : formatIDR(price)}
+          </span>
+          {price > 0 ? <span className="pb-1 text-xs text-muted">/bulan</span> : null}
         </div>
 
         <ul className="mb-5 flex-1 space-y-2.5">

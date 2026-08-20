@@ -15,8 +15,6 @@ export interface TierConfig {
   tagline: string;
   /** Rupiah per bulan. */
   price: number;
-  originalPrice?: number;
-  promoBadge?: string;
   /** Chip kecil di kartu (mis. "Paling laris"). */
   highlight?: string;
   popular?: boolean;
@@ -61,9 +59,7 @@ export const TIERS: Record<TierId, TierConfig> = {
     id: "pro",
     name: "Pro",
     tagline: "Akses penuh fitur AI & kuota maksimal tanpa batas",
-    price: 20_000,
-    originalPrice: 45_000,
-    promoBadge: "PROMO MERDEKA",
+    price: 45_000,
     highlight: "Full akses",
     benefits: [
       "Tradu tanpa batas",
