@@ -536,30 +536,25 @@ export function BalanceCard({
   return (
     <motion.div
       className={cn(
-        "relative overflow-hidden rounded-3xl border border-red-400/40 bg-[linear-gradient(135deg,#991b1b_0%,#dc2626_40%,#ef4444_60%,#b91c1c_100%)] p-5 text-white shadow-xl shadow-red-950/25 sm:p-6",
+        "relative overflow-hidden rounded-3xl border border-white/15 bg-[linear-gradient(135deg,#003d7a_0%,#0060af_40%,#0072c6_60%,#004e92_100%)] p-5 text-white shadow-xl shadow-blue-950/25 sm:p-6",
         className,
       )}
       initial={getAnimation({ opacity: 0, y: 8 })}
       animate={getAnimation({ opacity: 1, y: 0 })}
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
-      {/* Merah-Putih Glass sheen + depth rings (dekoratif) */}
+      {/* Glass sheen + depth rings (dekoratif) */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.20)_0%,transparent_45%,rgba(255,255,255,0.10)_100%)]"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18)_0%,transparent_45%,rgba(255,255,255,0.06)_100%)]"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-20 -bottom-28 size-72 rounded-full border border-white/20"
+        className="pointer-events-none absolute -right-20 -bottom-28 size-72 rounded-full border border-white/10"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-4 -bottom-6 size-32 rounded-full border border-white/15"
-      />
-      {/* Decorative Merah-Putih flag ribbon accent line in background */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-red-600 via-white to-red-600 opacity-90"
+        className="pointer-events-none absolute -right-4 -bottom-6 size-32 rounded-full border border-white/10"
       />
       {watermark ? (
         <span
