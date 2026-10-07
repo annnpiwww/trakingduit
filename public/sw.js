@@ -1,10 +1,11 @@
 /* TrackingDuit service worker — offline shell + runtime caching. */
 
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `td-shell-${VERSION}`;
 const RUNTIME_CACHE = `td-runtime-${VERSION}`;
 
 const SHELL_ASSETS = [
+  "/",
   "/dashboard",
   "/transactions",
   "/wallets",
@@ -58,7 +59,8 @@ self.addEventListener("fetch", (event) => {
           cache.put(request, response.clone());
           return response;
         } catch {
-          const cached = (await caches.match(request)) ?? (await caches.match("/dashboard"));
+          const fallback = url.pathname === "/" ? (await caches.match("/")) : (await caches.match("/dashboard"));
+          const cached = (await caches.match(request)) ?? fallback;
           return cached ?? Response.error();
         }
       })(),
