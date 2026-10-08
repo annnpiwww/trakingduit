@@ -1117,14 +1117,19 @@ export default function LandingPage() {
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">Legalitas</h4>
               <ul className="mt-3 space-y-2 text-xs text-muted">
                 <li>
-                  <a href="#keamanan" className="transition hover:text-fg">
-                    Kebijakan Privasi
-                  </a>
+                  <Link href="/about" className="transition hover:text-fg">
+                    Tentang Kami
+                  </Link>
                 </li>
                 <li>
-                  <a href="#keamanan" className="transition hover:text-fg">
+                  <Link href="/privacy" className="transition hover:text-fg">
+                    Kebijakan Privasi
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="transition hover:text-fg">
                     Ketentuan Layanan
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#faq" className="transition hover:text-fg">
